@@ -4,7 +4,6 @@ import nmap
 import psycopg2
 import paramiko
 import os
-
 from dotenv import load_dotenv
 
 GREEN = '\033[32m'
@@ -23,10 +22,7 @@ conn = psycopg2.connect(
 
 def initialize_database():
     # Load environment variables from .env file
-
-
     try:
-
         cur = conn.cursor()
         # Create the 'hosts' table
         cur.execute("""
@@ -114,17 +110,19 @@ async def scan_host(host, hostname, scanner):
             print(f"{GREEN}Port 5432 is open on host {RESET}{hostname} ({host})!")
             cur.execute("UPDATE hosts SET postgres_open = true WHERE hostname = %s", (hostname,))
             conn.commit()
+            print(f"{GREEN}Database record updated for host {RESET}{hostname} ({host}){RESET}")
         except Exception as e:
             print(f"{RED}Error updating database for host {hostname} ({host}): {str(e)}{RESET}")
             
     try:
         cur.execute("UPDATE hosts SET open_ports = %s WHERE hostname = %s", (open_ports, hostname))
         conn.commit()
-
+        print(f"{GREEN}Open ports ({open_ports}) updated in the database for host {RESET}{hostname} ({host}){RESET}")
     except Exception as e:
         print(f"{RED}Error updating database for host {hostname} ({host}): {str(e)}{RESET}")
         
     return hostname
+
 
 
 async def connect_to_postgres(hosts, credentials):

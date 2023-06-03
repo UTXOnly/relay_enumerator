@@ -11,7 +11,7 @@ services:
       - POSTGRES_USER=${DB_USER}
       - POSTGRES_PASSWORD=${DB_PASSWORD}
     ports:
-      - "5466:5466"
+      - "5466:5432"
     networks:
       mynetwork:
         ipv4_address: 172.18.0.2
