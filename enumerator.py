@@ -97,21 +97,50 @@ async def resolve_hosts(hosts):
 async def scan_host(host, hostname, scanner):
     print(f"Scanning host {hostname} ({host})...")
     cur = conn.cursor()
-    
-    cur.execute("SELECT last_scanned FROM hosts WHERE hostname = %s", (hostname,))
-    last_scanned = cur.fetchone()[0]
-    
-    if last_scanned is not None and time.time() - last_scanned < 24 * 60 * 60:
-        print(f"{YELLOW}Skipping host {hostname} ({host}): already scanned within the last 24 hours{RESET}")
-        return None
-    
+
     try:
+        cur.execute("SELECT last_scanned FROM hosts WHERE hostname = %s", (hostname,))
+        last_scanned = cur.fetchone()[0]
+
+        if last_scanned is not None and time.time() - last_scanned < 24 * 60 * 60:
+            print(f"{YELLOW}Skipping host {hostname} ({host}): already scanned within the last 24 hours{RESET}")
+            return None
+
         scanner.scan(host)
         results = scanner[host]['tcp']
+
+        open_ports = [port for port, data in results.items() if data['state'] == 'open']
+
+        if any(len(str(port)) > 255 for port in open_ports):
+            print(f"{RED}Skipping host {hostname} ({host}): open_ports data exceeds 255 characters{RESET}")
+            return None
+
+        if 5432 in open_ports:
+            try:
+                print(f"{GREEN}Port 5432 is open on host {RESET}{hostname} ({host})!")
+                cur.execute("UPDATE hosts SET postgres_open = true WHERE hostname = %s", (hostname,))
+                conn.commit()
+                print(f"{GREEN}Database record updated for host {RESET}{hostname} ({host}){RESET}")
+            except Exception as e:
+                print(f"{RED}Error updating database for host {hostname} ({host}): {str(e)}{RESET}")
+                traceback.print_exc()
+                return None
+
+        open_ports_str = ','.join(str(port) for port in open_ports)
+        cur.execute("UPDATE hosts SET open_ports = %s WHERE hostname = %s", ([str(port) for port in open_ports], hostname))
+        conn.commit()
+        print(f"{GREEN}Open ports ({open_ports}) updated in the database for host {RESET}{hostname} ({host}){RESET}")
+
+        cur.execute("UPDATE hosts SET last_scanned = %s WHERE hostname = %s", (int(time.time()), hostname))
+        conn.commit()
+        print(f"{GREEN}Last scanned timestamp updated in the database for host {RESET}{hostname} ({host}){RESET}")
+
+        return hostname
+
     except Exception as e:
         print(f"{RED}Error scanning host {hostname} ({host}): {str(e)}{RESET}")
         traceback.print_exc()
-        
+
         # add timestamp even if it errors out
         try:
             cur.execute("UPDATE hosts SET last_scanned = %s WHERE hostname = %s", (int(time.time()), hostname))
@@ -119,52 +148,9 @@ async def scan_host(host, hostname, scanner):
             print(f"{GREEN}Last scanned timestamp updated in the database for host {RESET}{hostname} ({host}){RESET}")
         except Exception as e:
             print(f"{RED}Error updating last scanned timestamp for host {hostname} ({host}): {str(e)}{RESET}")
-            traceback.print_exc()
-            
+
         return None
-    
-    open_ports = [port for port, data in results.items() if data['state'] == 'open']
-    
-    if any(len(str(port)) > 255 for port in open_ports):
-        print(f"{RED}Skipping host {hostname} ({host}): open_ports data exceeds 255 characters{RESET}")
-        return None
-    
-    if len(open_ports) > 10000:
-        print(f"{RED}Open ports value is too large for host {hostname} ({host}): too large{RESET}")
-        return None
-    
-    if 5432 in open_ports:
-        try:
-            print(f"{GREEN}Port 5432 is open on host {RESET}{hostname} ({host})!")
-            cur.execute("UPDATE hosts SET postgres_open = true WHERE hostname = %s", (hostname,))
-            conn.commit()
-            print(f"{GREEN}Database record updated for host {RESET}{hostname} ({host}){RESET}")
-        except Exception as e:
-            print(f"{RED}Error updating database for host {hostname} ({host}): {str(e)}{RESET}")
-            traceback.print_exc()
-            return None
-            
-    try:
-        open_ports_str = ','.join(str(port) for port in open_ports)
-        cur.execute("UPDATE hosts SET open_ports = %s WHERE hostname = %s", ([str(port) for port in open_ports], hostname))
-        conn.commit()
-        print(f"{GREEN}Open ports ({open_ports}) updated in the database for host {RESET}{hostname} ({host}){RESET}")
-    except Exception as e:
-        print(f"{RED}Error updating database for host {hostname} ({host}): {str(e)}{RESET}")
-        traceback.print_exc()
-        return None
-    
-        
-    try:
-        cur.execute("UPDATE hosts SET last_scanned = %s WHERE hostname = %s", (int(time.time()), hostname))
-        conn.commit()
-        print(f"{GREEN}Last scanned timestamp updated in the database for host {RESET}{hostname} ({host}){RESET}")
-    except Exception as e:
-        print(f"{RED}Error updating last scanned timestamp for host {hostname} ({host}): {str(e)}{RESET}")
-        traceback.print_exc()
-        return None
-    
-    return hostname
+
 
 
 async def connect_to_postgres(hosts, credentials):
