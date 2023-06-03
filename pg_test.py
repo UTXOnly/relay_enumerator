@@ -11,6 +11,8 @@ GREEN = '\033[32m'
 RED = '\033[31m'
 RESET = '\033[0m'
 
+load_dotenv()
+
 conn = psycopg2.connect(
     host=os.getenv('DB_HOST'),
     port=os.getenv('DB_PORT'),
@@ -25,7 +27,7 @@ cur = conn.cursor()
 
 def initialize_database():
     # Load environment variables from .env file
-    load_dotenv()
+
 
     try:
 
