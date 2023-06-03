@@ -1,0 +1,4 @@
+nmap
+psycopg2
+socket
+paramiko
