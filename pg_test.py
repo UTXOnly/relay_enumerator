@@ -96,18 +96,11 @@ async def resolve_hosts(hosts):
 
 import time
 
+import time
+
 async def scan_host(host, hostname, scanner):
-    cur = conn.cursor()
-    
-    cur.execute("SELECT last_scanned FROM hosts WHERE hostname = %s", (hostname,))
-    last_scanned = cur.fetchone()
-    
-    if last_scanned is not None and (time.time() - last_scanned[0]) <= 24 * 60 * 60:
-        print(f"{GREEN}Host {RESET}{hostname} ({host}){GREEN} has been scanned within the past 24 hours. Skipping scan.{RESET}")
-        return None
-    
     print(f"Scanning host {hostname} ({host})...")
-    
+    cur = conn.cursor()
     try:
         scanner.scan(host)
         results = scanner[host]['tcp']
@@ -130,17 +123,24 @@ async def scan_host(host, hostname, scanner):
             print(f"{RED}Error updating database for host {hostname} ({host}): {str(e)}{RESET}")
             
     try:
-        last_scanned = int(time.time())
-        cur.execute("UPDATE hosts SET open_ports = %s, last_scanned = %s WHERE hostname = %s", (open_ports, last_scanned, hostname))
+        cur.execute("UPDATE hosts SET open_ports = %s WHERE hostname = %s", (open_ports, hostname))
         conn.commit()
-        print(f"{GREEN}Open ports ({open_ports}) and last_scanned updated in the database for host {RESET}{hostname} ({host}){RESET}")
+        print(f"{GREEN}Open ports ({open_ports}) updated in the database for host {RESET}{hostname} ({host}){RESET}")
     except Exception as e:
         print(f"{RED}Error updating database for host {hostname} ({host}): {str(e)}{RESET}")
         
+    cur.execute("SELECT last_scanned FROM hosts WHERE hostname = %s", (hostname,))
+    last_scanned = cur.fetchone()[0]
+    
+    if last_scanned is None or time.time() - last_scanned >= 24 * 60 * 60:
+        try:
+            cur.execute("UPDATE hosts SET last_scanned = %s WHERE hostname = %s", (int(time.time()), hostname))
+            conn.commit()
+            print(f"{GREEN}Last scanned timestamp updated in the database for host {RESET}{hostname} ({host}){RESET}")
+        except Exception as e:
+            print(f"{RED}Error updating last scanned timestamp for host {hostname} ({host}): {str(e)}{RESET}")
+    
     return hostname
-
-
-
 
 
 async def connect_to_postgres(hosts, credentials):
