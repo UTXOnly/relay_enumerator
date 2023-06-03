@@ -3,6 +3,8 @@ import socket
 import nmap
 import psycopg2
 import paramiko
+import traceback
+import time
 import os
 from dotenv import load_dotenv
 
@@ -91,10 +93,6 @@ async def resolve_hosts(hosts):
 
     return results
 
-import time
-
-import time
-
 async def scan_host(host, hostname, scanner):
     print(f"Scanning host {hostname} ({host})...")
     cur = conn.cursor()
@@ -103,6 +101,7 @@ async def scan_host(host, hostname, scanner):
         results = scanner[host]['tcp']
     except Exception as e:
         print(f"{RED}Error scanning host {hostname} ({host}): {str(e)}{RESET}")
+        traceback.print_exc()
         return None
     
     open_ports = []
@@ -118,6 +117,8 @@ async def scan_host(host, hostname, scanner):
             print(f"{GREEN}Database record updated for host {RESET}{hostname} ({host}){RESET}")
         except Exception as e:
             print(f"{RED}Error updating database for host {hostname} ({host}): {str(e)}{RESET}")
+            traceback.print_exc()
+            return None
             
     try:
         cur.execute("UPDATE hosts SET open_ports = %s WHERE hostname = %s", (open_ports, hostname))
@@ -125,6 +126,8 @@ async def scan_host(host, hostname, scanner):
         print(f"{GREEN}Open ports ({open_ports}) updated in the database for host {RESET}{hostname} ({host}){RESET}")
     except Exception as e:
         print(f"{RED}Error updating database for host {hostname} ({host}): {str(e)}{RESET}")
+        traceback.print_exc()
+        return None
         
     cur.execute("SELECT last_scanned FROM hosts WHERE hostname = %s", (hostname,))
     last_scanned = cur.fetchone()[0]
@@ -136,8 +139,11 @@ async def scan_host(host, hostname, scanner):
             print(f"{GREEN}Last scanned timestamp updated in the database for host {RESET}{hostname} ({host}){RESET}")
         except Exception as e:
             print(f"{RED}Error updating last scanned timestamp for host {hostname} ({host}): {str(e)}{RESET}")
+            traceback.print_exc()
+            return None
     
     return hostname
+
 
 
 async def connect_to_postgres(hosts, credentials):

@@ -4,11 +4,16 @@ Relay Enumerator is a Python program that scans a list of hostnames, resolves th
 
 ## Prerequisites
 
+* NMAP
+
 Install dependencies by running:
 
 ```
 pip install -r requirements.txt
-
+```
+For the `python-nmap` library to work, you need to have `nmap` installed on your host and can do so with this command:
+```
+sudo apt install nmap -y
 ```
 
 ## Getting started
