@@ -120,8 +120,7 @@ async def scan_host(host, hostname, scanner):
     try:
         cur.execute("UPDATE hosts SET open_ports = %s WHERE hostname = %s", (open_ports, hostname))
         conn.commit()
-        cur.close()
-        conn.close()
+
     except Exception as e:
         print(f"{RED}Error updating database for host {hostname} ({host}): {str(e)}{RESET}")
         
