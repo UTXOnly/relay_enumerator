@@ -21,7 +21,7 @@ conn = psycopg2.connect(
     password=os.getenv('DB_PASSWORD')
 )
 
-cur = conn.cursor()
+
 
 
 
@@ -31,7 +31,7 @@ def initialize_database():
 
     try:
 
-
+        cur = conn.cursor()
         # Create the 'hosts' table
         cur.execute("""
             CREATE TABLE IF NOT EXISTS hosts (
@@ -87,6 +87,7 @@ async def resolve_hosts(hosts):
 
     results = {}
     for host in hosts:
+        cur = conn.cursor()
         cur.execute("SELECT ip_address FROM hosts WHERE hostname = %s", (host,))
         result = cur.fetchone()
         if result is not None:
@@ -114,6 +115,7 @@ async def scan_host(host, hostname, scanner):
     status = results[5432]['state']
 
     if status == 'open':
+        cur = conn.cursor()
         print(f"{GREEN}Port 5432 is open on host {RESET}{hostname} ({host})!")
         cur.execute("UPDATE hosts SET postgres_open = true WHERE hostname = %s", (hostname,))
         conn.commit()
@@ -157,6 +159,7 @@ async def ssh_login(ip_dict, password_file):
                         lambda: client.connect(str(ip), username='root', password=pw, timeout=15),
                     )
                     print(f"{GREEN}Successful login on {RESET}{ip}{GREEN} with password:{RESET} {pw}")
+                    cur = conn.cursor()
                     cur.execute("INSERT INTO ssh_logins (hostname, ip_address, password) VALUES (%s, %s, %s)", (host, ip, pw))
                     conn.commit()
                     client.close()
