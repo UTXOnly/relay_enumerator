@@ -45,8 +45,6 @@ def initialize_database():
         """)
 
         conn.commit()
-        cur.close()
-        conn.close()
 
         print("Database initialization complete.")
 
