@@ -96,6 +96,14 @@ async def resolve_hosts(hosts):
 async def scan_host(host, hostname, scanner):
     print(f"Scanning host {hostname} ({host})...")
     cur = conn.cursor()
+    
+    cur.execute("SELECT last_scanned FROM hosts WHERE hostname = %s", (hostname,))
+    last_scanned = cur.fetchone()[0]
+    
+    if last_scanned is not None and time.time() - last_scanned < 24 * 60 * 60:
+        print(f"{YELLOW}Skipping host {hostname} ({host}): already scanned within the last 24 hours{RESET}")
+        return None
+    
     try:
         scanner.scan(host)
         results = scanner[host]['tcp']
@@ -134,20 +142,17 @@ async def scan_host(host, hostname, scanner):
         traceback.print_exc()
         return None
         
-    cur.execute("SELECT last_scanned FROM hosts WHERE hostname = %s", (hostname,))
-    last_scanned = cur.fetchone()[0]
-    
-    if last_scanned is None or time.time() - last_scanned >= 24 * 60 * 60:
-        try:
-            cur.execute("UPDATE hosts SET last_scanned = %s WHERE hostname = %s", (int(time.time()), hostname))
-            conn.commit()
-            print(f"{GREEN}Last scanned timestamp updated in the database for host {RESET}{hostname} ({host}){RESET}")
-        except Exception as e:
-            print(f"{RED}Error updating last scanned timestamp for host {hostname} ({host}): {str(e)}{RESET}")
-            traceback.print_exc()
-            return None
+    try:
+        cur.execute("UPDATE hosts SET last_scanned = %s WHERE hostname = %s", (int(time.time()), hostname))
+        conn.commit()
+        print(f"{GREEN}Last scanned timestamp updated in the database for host {RESET}{hostname} ({host}){RESET}")
+    except Exception as e:
+        print(f"{RED}Error updating last scanned timestamp for host {hostname} ({host}): {str(e)}{RESET}")
+        traceback.print_exc()
+        return None
     
     return hostname
+
 
 
 async def connect_to_postgres(hosts, credentials):
