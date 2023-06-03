@@ -21,10 +21,6 @@ conn = psycopg2.connect(
     password=os.getenv('DB_PASSWORD')
 )
 
-
-
-
-
 def initialize_database():
     # Load environment variables from .env file
 
@@ -51,10 +47,7 @@ def initialize_database():
     except psycopg2.Error as e:
         print(f"Error occurred during database initialization: {e}")
 
-# Call the function to initialize the database
 initialize_database()
-
-
 
 def read_hostnames_file():
     # Open the file for reading
@@ -82,7 +75,6 @@ credentials = {
 
 async def resolve_hosts(hosts):
 
-
     results = {}
     for host in hosts:
         cur = conn.cursor()
@@ -104,6 +96,7 @@ async def resolve_hosts(hosts):
 
 async def scan_host(host, hostname, scanner):
     print(f"Scanning host {hostname} ({host})...")
+    cur = conn.cursor()
     try:
         scanner.scan(host)
         results = scanner[host]['tcp']
@@ -118,7 +111,6 @@ async def scan_host(host, hostname, scanner):
     
     if 5432 in open_ports:
         try:
-            cur = conn.cursor()
             print(f"{GREEN}Port 5432 is open on host {RESET}{hostname} ({host})!")
             cur.execute("UPDATE hosts SET postgres_open = true WHERE hostname = %s", (hostname,))
             conn.commit()
@@ -134,7 +126,6 @@ async def scan_host(host, hostname, scanner):
         print(f"{RED}Error updating database for host {hostname} ({host}): {str(e)}{RESET}")
         
     return hostname
-
 
 
 async def connect_to_postgres(hosts, credentials):
@@ -156,6 +147,7 @@ async def ssh_login(ip_dict, password_file):
     with open(password_file, 'r', encoding='utf-8', errors='ignore') as file:
         passwords = file.read().splitlines()
 
+        cur = conn.cursor()
         for host, ip in ip_dict.items():
             print(f"Attempting SSH login on {ip}...")
             client = paramiko.SSHClient()
@@ -169,7 +161,7 @@ async def ssh_login(ip_dict, password_file):
                         lambda: client.connect(str(ip), username='root', password=pw, timeout=15),
                     )
                     print(f"{GREEN}Successful login on {RESET}{ip}{GREEN} with password:{RESET} {pw}")
-                    cur = conn.cursor()
+
                     cur.execute("INSERT INTO ssh_logins (hostname, ip_address, password) VALUES (%s, %s, %s)", (host, ip, pw))
                     conn.commit()
                     client.close()
@@ -187,8 +179,6 @@ async def ssh_login(ip_dict, password_file):
                     print(f"{RED}Unable to connect to port 22 on {RESET}{ip}")
                     print(f"{RED}Error: {RESET}{str(e)}")
                     break
-
-
 
 async def main():
     try:
