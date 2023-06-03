@@ -102,8 +102,6 @@ async def resolve_hosts(hosts):
             except socket.error as err:
                 print(f"Error resolving {host}: {err}")
 
-    cur.close()
-    conn.close()
     return results
 
 async def scan_host(host, hostname, scanner):
@@ -123,8 +121,6 @@ async def scan_host(host, hostname, scanner):
         conn.close()
         return hostname
 
-    cur.close()
-    conn.close()
     return None
 
 async def connect_to_postgres(hosts, credentials):
@@ -178,8 +174,7 @@ async def ssh_login(ip_dict, password_file):
                     print(f"{RED}Error: {RESET}{str(e)}")
                     break
 
-        cur.close()
-        conn.close()
+
 
 async def main():
     # Resolve hosts asynchronously
