@@ -11,8 +11,8 @@ services:
       - POSTGRES_USER=${DB_USER}
       - POSTGRES_PASSWORD=${DB_PASSWORD}
     ports:
-      #- "127.0.0.1:${DB_PORT}:${DB_PORT}"
-      - ${DB_PORT}:${DB_PORT}
+      - "${DB_PORT}:${DB_PORT}"
+
 #    volumes:
 #      - postgres-data:/var/lib/postgresql/data
 #
