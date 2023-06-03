@@ -5,6 +5,9 @@ import psycopg2
 import paramiko
 import os
 from dotenv import load_dotenv
+from ddtrace import tracer
+
+tracer.configure(hostname='172.28.0.5', port=8126)
 
 GREEN = '\033[32m'
 RED = '\033[31m'
