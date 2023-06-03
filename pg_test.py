@@ -103,23 +103,39 @@ async def resolve_hosts(hosts):
     return results
 
 async def scan_host(host, hostname, scanner):
-
-
     print(f"Scanning host {hostname} ({host})...")
-    scanner.scan(host, arguments='-p 5432')
-    results = scanner[host]['tcp']
-    status = results[5432]['state']
-
-    if status == 'open':
-        cur = conn.cursor()
-        print(f"{GREEN}Port 5432 is open on host {RESET}{hostname} ({host})!")
-        cur.execute("UPDATE hosts SET postgres_open = true WHERE hostname = %s", (hostname,))
+    try:
+        scanner.scan(host)
+        results = scanner[host]['tcp']
+    except Exception as e:
+        print(f"{RED}Error scanning host {hostname} ({host}): {str(e)}{RESET}")
+        return None
+    
+    open_ports = []
+    for port, data in results.items():
+        if data['state'] == 'open':
+            open_ports.append(port)
+    
+    if 5432 in open_ports:
+        try:
+            cur = conn.cursor()
+            print(f"{GREEN}Port 5432 is open on host {RESET}{hostname} ({host})!")
+            cur.execute("UPDATE hosts SET postgres_open = true WHERE hostname = %s", (hostname,))
+            conn.commit()
+        except Exception as e:
+            print(f"{RED}Error updating database for host {hostname} ({host}): {str(e)}{RESET}")
+            
+    try:
+        cur.execute("UPDATE hosts SET open_ports = %s WHERE hostname = %s", (open_ports, hostname))
         conn.commit()
         cur.close()
         conn.close()
-        return hostname
+    except Exception as e:
+        print(f"{RED}Error updating database for host {hostname} ({host}): {str(e)}{RESET}")
+        
+    return hostname
 
-    return None
+
 
 async def connect_to_postgres(hosts, credentials):
     for host in hosts:
@@ -175,24 +191,29 @@ async def ssh_login(ip_dict, password_file):
 
 
 async def main():
-    # Resolve hosts asynchronously
-    host_dict = await resolve_hosts(hostnames)
-    print(host_dict)
+    try:
+        # Resolve hosts asynchronously
+        host_dict = await resolve_hosts(hostnames)
+        print(host_dict)
 
-    # Create a new Nmap scanner object
-    scanner = nmap.PortScanner()
+        # Create a new Nmap scanner object
+        scanner = nmap.PortScanner()
 
-    # Scan hosts and collect open ports
-    postgres_open = await asyncio.gather(
-        *[scan_host(host, hostname, scanner) for hostname, host in host_dict.items()]
-    )
-    postgres_open = [host for host in postgres_open if host is not None]
+        # Scan hosts and collect open ports
+        postgres_open = await asyncio.gather(
+            *[scan_host(host, hostname, scanner) for hostname, host in host_dict.items()]
+        )
+        postgres_open = [host for host in postgres_open if host is not None]
 
-    # Connect to PostgreSQL using collected open hosts and credentials
-    await connect_to_postgres(postgres_open, credentials)
+        # Connect to PostgreSQL using collected open hosts and credentials
+        await connect_to_postgres(postgres_open, credentials)
 
-    # Perform SSH login on the resolved hosts
-    await ssh_login(host_dict, 'common_root_passwords.txt')
+        # Perform SSH login on the resolved hosts
+        await ssh_login(host_dict, 'common_root_passwords.txt')
+        
+    except Exception as e:
+        print(f"{RED}Error running main function: {str(e)}{RESET}")
 
 # Run the main function
 asyncio.run(main())
+
