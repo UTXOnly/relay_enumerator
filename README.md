@@ -18,7 +18,7 @@ To run the enumerator program you should first populate the `hostnames.txt` file
 Running the enumerator is as easy as:
 
 ```
-python3 pg_test.py
+python3 enumerator.py
 ```
 
 The program will create a database of the hosts you scanned, creaiting columns for  `hostname`, `ip address`, `open ports`, `postgres open` and `last scanned`.
