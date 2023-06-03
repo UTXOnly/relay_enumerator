@@ -1,72 +1,42 @@
-Certainly! Here's a sample GitHub README.md file written in raw Markdown to guide users on how to use your program:
-
-```markdown
 # Relay Enumerator
 
-Relay Enumerator is a Python program that scans a list of hostnames, resolves their IP addresses, and performs various operations such as port scanning, connecting to PostgreSQL, and SSH login attempts.
+Relay Enumerator is a Python program that scans a list of hostnames, resolves their IP addresses, and performs various operations such as port scanning, connecting to PostgreSQL, and SSH login attempts. This is for research purposes and should only be used in sandbox environments, do not attempt to gain unauthorized access to relays.
 
 ## Prerequisites
 
-- Python 3.x
-- PostgreSQL database
-- Nmap tool
-- Paramiko library
+Install dependencies by running:
 
-## Installation
+```
+pip install -r requirements.txt
 
-1. Clone the repository:
+```
 
-   ```shell
-   git clone https://github.com/your-username/relay-enumerator.git
-   ```
+## Getting started
 
-2. Change into the project directory:
+To run the enumerator program you should first populate the `hostnames.txt` files with hosts you want to scan. The program will read through this list, resolve the host's ip address and then scan for open ports as well as weak `ssh` and `postgresql` security measures.
 
-   ```shell
-   cd relay-enumerator
-   ```
+Running the enumerator is as easy as:
 
-3. Install the required Python dependencies using pip:
+```
+python3 pg_test.py
+```
 
-   ```shell
-   pip install -r requirements.txt
-   ```
+The program will create a database of the hosts you scanned, creaiting columns for  `hostname`, `ip address`, `open ports`, `postgres open` and `last scanned`.
 
-4. Set up the PostgreSQL database:
 
-   - Create a new database.
-   - Update the `.env` file with the appropriate database connection details.
+Hostname             | IP Address     | Open Ports | PostgreSQL Open | Last Scanned
+---------------------|----------------|------------|-----------------|--------------
+example.com          | 192.168.0.1    | 22, 80     | Yes             | 1633204314
+test.domain          | 10.0.0.1       | 443        | No              | 1633205412
+mockhost.local       | 172.16.0.1     | 5432       | Yes             | 1633206523
 
-5. Prepare the hostnames file:
-
-   - Create a file named `hostnames.txt` in the project directory.
-   - Add each hostname you want to scan on a new line.
-
-6. Update the credentials:
-
-   - Modify the `credentials` dictionary in `pg_test.py` to include the desired credentials for PostgreSQL and SSH login attempts.
-
-## Usage
-
-1. Initialize the database:
-
-   Run the following command to create the necessary database tables:
-
-   ```shell
-   python3 pg_test.py init
-   ```
-
-2. Run the program:
-
-   ```shell
-   python3 pg_test.py
-   ```
-
-   This will start the scanning process, which includes resolving hostnames, scanning ports, connecting to PostgreSQL, and attempting SSH logins.
-
-3. View the results:
-
-   The program will output the status of each operation, including open ports, successful database updates, and SSH login attempts.
+## To Do
+* Update scripts to scan for more vulnerabilites
+    * Provide guidance to relay admin to remediate
+* Collect Nip 20 contact info for relay admin
+* Integratate with [nostr_note_generator](https://github.com/UTXOnly/nostr_note_generator)
+    * To test relay's response to spam
+    * Message relay admin if vulnerabilites are found
 
 ## Contributing
 
@@ -74,7 +44,5 @@ Contributions are welcome! If you encounter any issues or have suggestions for i
 
 ## License
 
-[MIT License](LICENSE)
-```
+[MIT License](https://opensource.org/license/mit/)
 
-Feel free to modify and enhance the README.md file according to your specific program and requirements.
