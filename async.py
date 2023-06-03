@@ -4,9 +4,6 @@ import nmap
 import psycopg2
 import paramiko
 import os
-from ddtrace import tracer
-
-tracer.configure(hostname='172.28.0.5', port=8126)
 
 GREEN = '\033[32m'
 RED = '\033[31m'
@@ -69,18 +66,16 @@ async def scan_host(host, hostname, scanner):
     try:
         with open(HOSTS_FILE) as f:
             hosts_data = json.load(f)
-        #if host in hosts_data and hosts_data[host] == hostname:
-        #    print(f"Skipping host {hostname} ({host}): already scanned.")
-        #    return None
 
         print(f"Scanning host {hostname} ({host})...")
         scanner.scan(host, arguments='-p 5432')
         results = scanner[host]['tcp']
         status = results[5432]['state']
-        print(status)
 
         if status == 'open':
             print(f"{GREEN}Port 5432 is open on host {RESET}{hostname} ({host})!")
+            with open('postgres.txt', 'a') as file:
+                file.write(f"{hostname} ({host})\n")
             return hostname
 
         with open(HOSTS_FILE, 'w') as f:
@@ -92,6 +87,7 @@ async def scan_host(host, hostname, scanner):
     except Exception as e:
         print(f"Error occurred while scanning host {host}: {str(e)}")
     return None
+
 
 
 
