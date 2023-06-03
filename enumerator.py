@@ -111,12 +111,26 @@ async def scan_host(host, hostname, scanner):
     except Exception as e:
         print(f"{RED}Error scanning host {hostname} ({host}): {str(e)}{RESET}")
         traceback.print_exc()
+        
+        # add timestamp even if it errors out
+        try:
+            cur.execute("UPDATE hosts SET last_scanned = %s WHERE hostname = %s", (int(time.time()), hostname))
+            conn.commit()
+            print(f"{GREEN}Last scanned timestamp updated in the database for host {RESET}{hostname} ({host}){RESET}")
+        except Exception as e:
+            print(f"{RED}Error updating last scanned timestamp for host {hostname} ({host}): {str(e)}{RESET}")
+            traceback.print_exc()
+            
         return None
     
     open_ports = [port for port, data in results.items() if data['state'] == 'open']
     
     if any(len(str(port)) > 255 for port in open_ports):
         print(f"{RED}Skipping host {hostname} ({host}): open_ports data exceeds 255 characters{RESET}")
+        return None
+    
+    if len(open_ports) > 10000:
+        print(f"{RED}Open ports value is too large for host {hostname} ({host}): too large{RESET}")
         return None
     
     if 5432 in open_ports:
@@ -132,16 +146,14 @@ async def scan_host(host, hostname, scanner):
             
     try:
         open_ports_str = ','.join(str(port) for port in open_ports)
-        if len(open_ports_str) > 255:
-            print(f"{RED}Skipping host {hostname} ({host}): open_ports data exceeds 255 characters{RESET}")
-            return None
-        cur.execute("UPDATE hosts SET open_ports = %s WHERE hostname = %s", (open_ports_str, hostname))
+        cur.execute("UPDATE hosts SET open_ports = %s WHERE hostname = %s", ([str(port) for port in open_ports], hostname))
         conn.commit()
         print(f"{GREEN}Open ports ({open_ports}) updated in the database for host {RESET}{hostname} ({host}){RESET}")
     except Exception as e:
         print(f"{RED}Error updating database for host {hostname} ({host}): {str(e)}{RESET}")
         traceback.print_exc()
         return None
+    
         
     try:
         cur.execute("UPDATE hosts SET last_scanned = %s WHERE hostname = %s", (int(time.time()), hostname))
@@ -153,7 +165,6 @@ async def scan_host(host, hostname, scanner):
         return None
     
     return hostname
-
 
 
 async def connect_to_postgres(hosts, credentials):
