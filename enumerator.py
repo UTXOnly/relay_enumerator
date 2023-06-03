@@ -104,10 +104,11 @@ async def scan_host(host, hostname, scanner):
         traceback.print_exc()
         return None
     
-    open_ports = []
-    for port, data in results.items():
-        if data['state'] == 'open':
-            open_ports.append(port)
+    open_ports = [port for port, data in results.items() if data['state'] == 'open']
+    
+    if any(len(str(port)) > 255 for port in open_ports):
+        print(f"{RED}Skipping host {hostname} ({host}): open_ports data exceeds 255 characters{RESET}")
+        return None
     
     if 5432 in open_ports:
         try:
@@ -121,7 +122,11 @@ async def scan_host(host, hostname, scanner):
             return None
             
     try:
-        cur.execute("UPDATE hosts SET open_ports = %s WHERE hostname = %s", (open_ports, hostname))
+        open_ports_str = ','.join(str(port) for port in open_ports)
+        if len(open_ports_str) > 255:
+            print(f"{RED}Skipping host {hostname} ({host}): open_ports data exceeds 255 characters{RESET}")
+            return None
+        cur.execute("UPDATE hosts SET open_ports = %s WHERE hostname = %s", (open_ports_str, hostname))
         conn.commit()
         print(f"{GREEN}Open ports ({open_ports}) updated in the database for host {RESET}{hostname} ({host}){RESET}")
     except Exception as e:
@@ -143,7 +148,6 @@ async def scan_host(host, hostname, scanner):
             return None
     
     return hostname
-
 
 
 async def connect_to_postgres(hosts, credentials):
