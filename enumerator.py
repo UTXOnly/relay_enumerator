@@ -50,7 +50,7 @@ initialize_database()
 
 def read_hostnames_file():
     # Open the file for reading
-    with open('hostnames.txt', 'r') as f:
+    with open('real_hosts.txt', 'r') as f:
         # Read all lines from the file into a list
         hostnames = f.readlines()
 
