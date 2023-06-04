@@ -26,8 +26,8 @@ services:
             "dbm": true,
             "username": "datadog",
             "password" : "datadog",
-            "host": "host.docker.internal",
-            "port" : "5466",
+            "host": "postgres_enum",
+            "port" : "5432",
             "disable_generic_tags": true
           }
         ]
