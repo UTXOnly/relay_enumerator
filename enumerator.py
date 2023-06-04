@@ -198,4 +198,7 @@ def main():
     except Exception as e:
         print(f"{RED}Error running main function: {str(e)}{RESET}")
 
+main()
+
+
 
