@@ -145,9 +145,10 @@ async def scan_hosts_concurrently(hosts, scanner):
         scan_tasks = [executor.submit(scan_host, host, hostname, scanner) for hostname, host in hosts.items()]
 
         # Await the completion of all tasks
-        results = await asyncio.gather(*scan_tasks)
+        results = await asyncio.gather(*[task for task in asyncio.as_completed(scan_tasks)])
 
     return results
+
 
 
 
