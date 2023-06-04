@@ -68,6 +68,25 @@ def resolve_hosts(hosts, conn):
                 print(f"Error resolving {host}: {err}")
     return results
 
+def resolve_hosts(hosts, conn):
+    results = {}
+    for host in hosts:
+        cur = conn.cursor()
+        try:
+            cur.execute("SELECT ip_address FROM hosts WHERE hostname = %s", (host,))
+            result = cur.fetchone()
+            if result is not None:
+                results[host] = result[0]
+            else:
+                ip = socket.gethostbyname(host)
+                results[host] = ip
+                cur.execute("INSERT INTO hosts (hostname, ip_address) VALUES (%s, %s)", (host, ip))
+                conn.commit()
+        except Exception as e:
+            print(f"Error resolving {host}: {str(e)}")
+            conn.rollback()
+    return results
+
 def scan_host(host, hostname, scanner, conn):
     print(f"Scanning host {hostname} ({host})...")
     try:
@@ -79,38 +98,34 @@ def scan_host(host, hostname, scanner, conn):
 
     cur = conn.cursor()
     open_ports = []
-    for port, data in results.items():
-        if data['state'] == 'open':
-            open_ports.append(port)
+    try:
+        for port, data in results.items():
+            if data['state'] == 'open':
+                open_ports.append(port)
 
-    if 5432 in open_ports:
-        try:
+        if 5432 in open_ports:
             print(f"{GREEN}Port 5432 is open on host {RESET}{hostname} ({host})!")
             cur.execute("UPDATE hosts SET postgres_open = true WHERE hostname = %s", (hostname,))
             conn.commit()
             print(f"{GREEN}Database record updated for host {RESET}{hostname} ({host}){RESET}")
-        except Exception as e:
-            print(f"{RED}Error updating database for host {hostname} ({host}): {str(e)}{RESET}")
             
-    try:
         cur.execute("UPDATE hosts SET open_ports = %s WHERE hostname = %s", (open_ports, hostname))
         conn.commit()
         print(f"{GREEN}Open ports ({open_ports}) updated in the database for host {RESET}{hostname} ({host}){RESET}")
-    except Exception as e:
-        print(f"{RED}Error updating database for host {hostname} ({host}): {str(e)}{RESET}")
         
-    cur.execute("SELECT last_scanned FROM hosts WHERE hostname = %s", (hostname,))
-    last_scanned = cur.fetchone()[0]
-    
-    if last_scanned is None or time.time() - last_scanned >= 24 * 60 * 60:
-        try:
+        cur.execute("SELECT last_scanned FROM hosts WHERE hostname = %s", (hostname,))
+        last_scanned = cur.fetchone()[0]
+        
+        if last_scanned is None or time.time() - last_scanned >= 24 * 60 * 60:
             cur.execute("UPDATE hosts SET last_scanned = %s WHERE hostname = %s", (int(time.time()), hostname))
             conn.commit()
             print(f"{GREEN}Last scanned timestamp updated in the database for host {RESET}{hostname} ({host}){RESET}")
-        except Exception as e:
-            print(f"{RED}Error updating last scanned timestamp for host {hostname} ({host}): {str(e)}{RESET}")
-    
+    except Exception as e:
+        print(f"{RED}Error updating database for host {hostname} ({host}): {str(e)}{RESET}")
+        conn.rollback()
+
     return hostname
+
 
 def scan_hosts_concurrently(hosts, scanner, conn):
     loop = asyncio.get_event_loop()
