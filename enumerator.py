@@ -203,10 +203,10 @@ async def main():
 
         # Scan hosts and collect open ports
         postgres_open = await scan_hosts_concurrently(host_dict, scanner)
-        postgres_open = [host for host in postgres_open if host is not None]
+        #postgres_open = [host for host in postgres_open if host is not None]
 
         # Connect to PostgreSQL using collected open hosts and credentials
-        await connect_to_postgres(postgres_open, credentials)
+        #await connect_to_postgres(postgres_open, credentials)
 
         # Perform SSH login on the resolved hosts
         # await ssh_login('usernames.txt', 'common_root_passwords.txt')
