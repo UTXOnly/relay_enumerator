@@ -17,6 +17,18 @@ services:
         ipv4_address: 172.18.0.2
     volumes:
       - postgres-data:/var/lib/postgresql/data
+    labels:
+      com.datadoghq.ad.check_names: '["my_check"]'
+      com.datadoghq.ad.init_configs: '[{}]'
+      com.datadoghq.ad.instances: |
+        [
+          {
+            "dbm": true,
+            "username": "datadog",
+            "host": "172.18.0.2",
+            "disable_generic_tags": true
+          }
+        ]
 
 networks:
   mynetwork:
