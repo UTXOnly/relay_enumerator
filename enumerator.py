@@ -108,18 +108,18 @@ async def resolve_hosts(hosts):
 
     return results
 
+import socket
+
 async def scan_host(host, hostname, scanner):
     print(f"Scanning host {hostname} ({host})...")
     cur = conn.cursor()
 
     try:
-        cur.execute("SELECT last_scanned FROM hosts WHERE hostname = %s", (hostname,))
-        row = cur.fetchone()
-        if row is None:
-            print(f"{YELLOW}Skipping host {hostname} ({host}): not found in the database{RESET}")
-            return None
+        # Attempt hostname resolution
+        ip_address = socket.gethostbyname(host)
 
-        last_scanned = row[0]
+        cur.execute("SELECT last_scanned FROM hosts WHERE hostname = %s", (hostname,))
+        last_scanned = cur.fetchone()[0]
 
         #if last_scanned is not None and time.time() - last_scanned < 24 * 60 * 60:
         #    print(f"{YELLOW}Skipping host {hostname} ({host}): already scanned within the last 24 hours{RESET}")
@@ -130,14 +130,9 @@ async def scan_host(host, hostname, scanner):
             print(f"{YELLOW}Skipping host {hostname} ({host}): already exists in the database{RESET}")
             return None
 
-        try:
-            cur.execute("INSERT INTO hosts (hostname, ip_address) VALUES (%s, %s)", (hostname, host))
-            conn.commit()
-            print(f"{GREEN}New host {hostname} ({host}) added to the database{RESET}")
-        except Exception as e:
-            print(f"{RED}Error inserting host {hostname} ({host}) into the database: {str(e)}{RESET}")
-            traceback.print_exc()
-            return None
+        cur.execute("INSERT INTO hosts (hostname, ip_address) VALUES (%s, %s)", (hostname, ip_address))
+        conn.commit()
+        print(f"{GREEN}New host {hostname} ({host}) added to the database{RESET}")
 
         scanner.scan(host)
         results = scanner[host]['tcp']
@@ -165,6 +160,10 @@ async def scan_host(host, hostname, scanner):
         print(f"{GREEN}Open ports ({open_ports}) updated in the database for host {RESET}{hostname} ({host}){RESET}")
 
         return hostname
+
+    except socket.gaierror as e:
+        print(f"{RED}Error resolving hostname {host}: {str(e)}{RESET}")
+        return None
 
     except Exception as e:
         print(f"{RED}Error occurred while scanning host {hostname} ({host}): {str(e)}")
