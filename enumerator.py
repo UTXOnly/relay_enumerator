@@ -86,7 +86,7 @@ def resolve_hosts(hosts, conn):
             print(f"Error resolving {host}: {str(e)}")
             conn.rollback()
     return results
-
+#working scan host and threading
 def scan_host(host, hostname, scanner, conn):
     print(f"Scanning host {hostname} ({host})...")
     try:
