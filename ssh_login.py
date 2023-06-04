@@ -25,7 +25,7 @@ conn = psycopg2.connect(
 )
 
 MAX_RETRIES = 3
-MAX_CONNECTIONS = 10
+MAX_CONNECTIONS = 50
 
 class SSHConnectionThread(threading.Thread):
     def __init__(self, queue, username_file, password_file):
