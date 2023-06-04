@@ -110,6 +110,8 @@ async def resolve_hosts(hosts):
 
 import socket
 
+import socket
+
 async def scan_host(host, hostname, scanner):
     print(f"Scanning host {hostname} ({host})...")
     cur = conn.cursor()
@@ -117,13 +119,16 @@ async def scan_host(host, hostname, scanner):
     try:
         # Attempt hostname resolution
         ip_address = socket.gethostbyname(host)
+        if ip_address is None:
+            print(f"{RED}Skipping host {hostname} ({host}): failed to resolve IP address{RESET}")
+            return None
 
         cur.execute("SELECT last_scanned FROM hosts WHERE hostname = %s", (hostname,))
         last_scanned = cur.fetchone()[0]
 
-        #if last_scanned is not None and time.time() - last_scanned < 24 * 60 * 60:
-        #    print(f"{YELLOW}Skipping host {hostname} ({host}): already scanned within the last 24 hours{RESET}")
-        #    return None
+        if last_scanned is not None and time.time() - last_scanned < 24 * 60 * 60:
+            print(f"{YELLOW}Skipping host {hostname} ({host}): already scanned within the last 24 hours{RESET}")
+            return None
 
         cur.execute("SELECT hostname FROM hosts WHERE hostname = %s", (hostname,))
         if cur.fetchone():
@@ -169,6 +174,7 @@ async def scan_host(host, hostname, scanner):
         print(f"{RED}Error occurred while scanning host {hostname} ({host}): {str(e)}")
         traceback.print_exc()
         return None
+
 
 
 
