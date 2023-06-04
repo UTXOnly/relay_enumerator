@@ -150,6 +150,7 @@ async def scan_hosts_concurrently(hosts, scanner):
     return results
 
 
+
 async def connect_to_postgres(hosts, credentials):
     for host in hosts:
         for username, password in credentials.items():
