@@ -30,7 +30,7 @@ def remove_duplicate_hosts():
     cur.execute("SELECT hostname, COUNT(*) FROM hosts GROUP BY hostname HAVING COUNT(*) > 1")  # find duplicate hostnames
     rows = cur.fetchall()
     for row in rows:
-        hostname = row
+        hostname = row[0]
         print(f"Processing duplicate hostname: {hostname}")
         cur.execute("SELECT id, last_scanned FROM hosts WHERE hostname = %s ORDER BY last_scanned ASC NULLS FIRST", (hostname,))
         rows_to_delete = cur.fetchall()
@@ -48,3 +48,5 @@ def remove_duplicate_hosts():
             print(f"Deleting older duplicate row")
             cur.execute("DELETE FROM hosts WHERE id = %s", (rows_to_delete[0][0],))
             conn.commit()
+
+remove_duplicate_hosts()
