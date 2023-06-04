@@ -108,15 +108,18 @@ async def resolve_hosts(hosts):
 
     return results
 
-
-
 async def scan_host(host, hostname, scanner):
     print(f"Scanning host {hostname} ({host})...")
     cur = conn.cursor()
 
     try:
         cur.execute("SELECT last_scanned FROM hosts WHERE hostname = %s", (hostname,))
-        last_scanned = cur.fetchone()[0]
+        row = cur.fetchone()
+        if row is None:
+            print(f"{YELLOW}Skipping host {hostname} ({host}): not found in the database{RESET}")
+            return None
+
+        last_scanned = row[0]
 
         if last_scanned is not None and time.time() - last_scanned < 24 * 60 * 60:
             print(f"{YELLOW}Skipping host {hostname} ({host}): already scanned within the last 24 hours{RESET}")
