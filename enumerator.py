@@ -121,9 +121,9 @@ async def scan_host(host, hostname, scanner):
 
         last_scanned = row[0]
 
-        if last_scanned is not None and time.time() - last_scanned < 24 * 60 * 60:
-            print(f"{YELLOW}Skipping host {hostname} ({host}): already scanned within the last 24 hours{RESET}")
-            return None
+        #if last_scanned is not None and time.time() - last_scanned < 24 * 60 * 60:
+        #    print(f"{YELLOW}Skipping host {hostname} ({host}): already scanned within the last 24 hours{RESET}")
+        #    return None
 
         cur.execute("SELECT hostname FROM hosts WHERE hostname = %s", (hostname,))
         if cur.fetchone():
