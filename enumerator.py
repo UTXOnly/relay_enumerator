@@ -108,9 +108,6 @@ async def resolve_hosts(hosts):
 
     return results
 
-import socket
-
-import socket
 
 async def scan_host(host, hostname, scanner):
     print(f"Scanning host {hostname} ({host})...")
@@ -119,7 +116,7 @@ async def scan_host(host, hostname, scanner):
     try:
         # Attempt hostname resolution
         ip_address = socket.gethostbyname(host)
-        if ip_address is None:
+        if not ip_address:
             print(f"{RED}Skipping host {hostname} ({host}): failed to resolve IP address{RESET}")
             return None
 
