@@ -73,7 +73,7 @@ credentials = {
     'admin': 'password'
 }
 
-import socket
+
 
 async def resolve_hosts(hosts):
     results = {}
@@ -82,18 +82,25 @@ async def resolve_hosts(hosts):
         cur.execute("SELECT ip_address FROM hosts WHERE hostname = %s", (host,))
         result = cur.fetchone()
         if result is not None:
-            results[host] = result[0]
+            ip_address = result[0]
         else:
             try:
                 ip = await asyncio.get_event_loop().getaddrinfo(host, None)
                 ip_address = ip[0][4][0]
-                results[host] = ip_address
                 cur.execute("INSERT INTO hosts (hostname, ip_address) VALUES (%s, %s)", (host, ip_address))
                 conn.commit()
             except socket.error as err:
                 print(f"Error resolving {host}: {err}")
-                cur.execute("INSERT INTO hosts (hostname, ip_address, open_ports) VALUES (%s, %s, %s)", (host, "offline",))
+                ip_address = "offline"
+                cur.execute("INSERT INTO hosts (hostname, ip_address, open_ports) VALUES (%s, %s, %s)", (host, ip_address, None))
                 conn.commit()
+
+        # Only update the record if the id value is not None
+        if result is not None:
+            cur.execute("UPDATE hosts SET ip_address = %s WHERE hostname = %s", (ip_address, host))
+            conn.commit()
+
+        results[host] = ip_address
 
     return results
 
