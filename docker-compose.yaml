@@ -18,7 +18,7 @@ services:
     volumes:
       - postgres-data:/var/lib/postgresql/data
     labels:
-      com.datadoghq.ad.check_names: '["my_check"]'
+      com.datadoghq.ad.check_names: '["postgres"]'
       com.datadoghq.ad.init_configs: '[{}]'
       com.datadoghq.ad.instances: |
         [
