@@ -30,11 +30,9 @@ def initialize_database(conn):
                 ssh_login VARCHAR(255)
             );
         """)
-
+        cur.execute("ALTER TABLE hosts ADD ssh_login VARCHAR(255);")
         conn.commit()
-
         print("Database initialization complete.")
-
     except psycopg2.Error as e:
         print(f"Error occurred during database initialization: {e}")
 
@@ -43,10 +41,8 @@ def read_hostnames_file():
     with open('real_hosts.txt', 'r') as f:
         # Read all lines from the file into a list
         hostnames = f.readlines()
-
     # Strip newline characters from each line in the list
     hostnames = [hostname.strip() for hostname in hostnames]
-
     # Return the list of hostnames
     return hostnames
 
