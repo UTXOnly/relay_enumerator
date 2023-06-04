@@ -238,7 +238,7 @@ async def main():
         await connect_to_postgres(postgres_open, credentials)
 
         # Perform SSH login on the resolved hosts
-        await ssh_login('usernames.txt', 'common_root_passwords.txt')
+        #await ssh_login('usernames.txt', 'common_root_passwords.txt')
         
     except Exception as e:
         print(f"{RED}Error running main function: {str(e)}{RESET}")
