@@ -140,14 +140,19 @@ async def scan_host(host, hostname, scanner):
 
 
 async def scan_hosts_concurrently(hosts, scanner):
+    loop = asyncio.get_event_loop()
     with concurrent.futures.ThreadPoolExecutor() as executor:
         # Create a list of future tasks for scanning each host concurrently
-        scan_tasks = [executor.submit(scan_host, host, hostname, scanner) for hostname, host in hosts.items()]
+        scan_tasks = [
+            loop.run_in_executor(executor, scan_host, host, hostname, scanner)
+            for hostname, host in hosts.items()
+        ]
 
         # Await the completion of all tasks
-        results = await asyncio.gather(*[task for task in asyncio.as_completed(scan_tasks)])
+        results = await asyncio.gather(*scan_tasks)
 
     return results
+
 
 
 
