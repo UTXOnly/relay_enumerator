@@ -74,8 +74,6 @@ credentials = {
     'admin': 'password'
 }
 
-
-
 async def resolve_hosts(hosts):
     results = {}
     for host in hosts:
@@ -84,6 +82,17 @@ async def resolve_hosts(hosts):
         result = cur.fetchone()
         if result is not None:
             ip_address = result[0]
+            if ip_address == 'offline':  # check if ip_address is offline
+                try:
+                    ip = await asyncio.get_event_loop().getaddrinfo(host, None)
+                    ip_address = ip[0][4][0]
+                    cur.execute("UPDATE hosts SET ip_address = %s WHERE hostname = %s", (ip_address, host))
+                    conn.commit()
+                except socket.error as err:
+                    print(f"Error resolving {host}: {err}")
+                    ip_address = None
+                    cur.execute("INSERT INTO hosts (hostname, ip_address, open_ports) VALUES (%s, %s, %s)", (host, ip_address, None))
+                    conn.commit()
         else:
             try:
                 ip = await asyncio.get_event_loop().getaddrinfo(host, None)
@@ -96,14 +105,10 @@ async def resolve_hosts(hosts):
                 cur.execute("INSERT INTO hosts (hostname, ip_address, open_ports) VALUES (%s, %s, %s)", (host, ip_address, None))
                 conn.commit()
 
-        # Only update the record if the id value is not None
-        if result is not None:
-            cur.execute("UPDATE hosts SET ip_address = %s WHERE hostname = %s", (ip_address, host))
-            conn.commit()
-
         results[host] = ip_address
 
     return results
+
 
 
 async def scan_host(host, hostname, scanner):
@@ -141,9 +146,6 @@ async def scan_host(host, hostname, scanner):
                 print(f"{RED}Error updating database for host {hostname} ({host}): {str(e)}{RESET}")
                 traceback.print_exc()
                 return None
-
-        if len(open_ports) == 0:
-            open_ports = ['offline']
 
         open_ports_str = ','.join(str(port) for port in open_ports)
         cur.execute("UPDATE hosts SET open_ports = %s WHERE hostname = %s", (open_ports_str, hostname))
@@ -207,8 +209,8 @@ def list_checker():
     cur.execute("SELECT hostname, open_ports FROM hosts")
     rows = cur.fetchall()
     for row in rows:
-        host = row[0]
-        open_ports = row[1]
+        host, open_ports = row
+         
         if open_ports is None:   # Skip the row if open_ports is None
             continue
         elif not isinstance(open_ports, list):
