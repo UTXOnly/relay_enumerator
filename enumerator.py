@@ -122,9 +122,14 @@ async def scan_host(host, hostname, scanner):
             print(f"{YELLOW}Skipping host {hostname} ({host}): already scanned within the last 24 hours{RESET}")
             return None
 
-        cur.execute("UPDATE hosts SET last_scanned = %s WHERE hostname = %s", (int(time.time()), hostname))
+        cur.execute("SELECT hostname FROM hosts WHERE hostname = %s", (hostname,))
+        if cur.fetchone():
+            print(f"{YELLOW}Skipping host {hostname} ({host}): already exists in the database{RESET}")
+            return None
+
+        cur.execute("INSERT INTO hosts (hostname, ip_address) VALUES (%s, %s)", (hostname, host))
         conn.commit()
-        print(f"{GREEN}Last scanned timestamp updated in the database for host {RESET}{hostname} ({host}){RESET}")
+        print(f"{GREEN}New host {hostname} ({host}) added to the database{RESET}")
 
         scanner.scan(host)
         results = scanner[host]['tcp']
@@ -154,19 +159,10 @@ async def scan_host(host, hostname, scanner):
         return hostname
 
     except Exception as e:
-        print(f"{RED}Error scanning host {hostname} ({host}): {str(e)}{RESET}")
+        print(f"{RED}Error occurred while scanning host {hostname} ({host}): {str(e)}")
         traceback.print_exc()
-
-        # add timestamp even if it errors out
-        try:
-            cur.execute("UPDATE hosts SET last_scanned = %s WHERE hostname = %s", (int(time.time()), hostname))
-            conn.commit()
-            print(f"{GREEN}Last scanned timestamp updated in the database for host {RESET}{hostname} ({host}){RESET}")
-        except Exception as e:
-            print(f"{RED}Error updating last scanned timestamp for host {hostname} ({host}): {str(e)}{RESET}")
-
         return None
-    
+
 
 
 # Define the function to run if conditions are met
