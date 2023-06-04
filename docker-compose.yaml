@@ -1,7 +1,7 @@
 version: '3'
 
 services:
-  postgres:
+  postgres_enum:
     image: postgres:latest
     restart: always
     environment:
@@ -26,7 +26,7 @@ services:
             "dbm": true,
             "username": "datadog",
             "password" : "datadog",
-            "host": "relay_enumerator_postgres_1",
+            "host": "host.docker.internal",
             "port" : "5466",
             "disable_generic_tags": true
           }
