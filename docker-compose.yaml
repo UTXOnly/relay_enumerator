@@ -26,7 +26,8 @@ services:
             "dbm": true,
             "username": "datadog",
             "password" : "datadog",
-            "host": "172.18.0.2",
+            "host": "relay_enumerator_postgres_1",
+            "port" : "5466",
             "disable_generic_tags": true
           }
         ]
