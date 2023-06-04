@@ -8,11 +8,11 @@ app = Flask(__name__)
 
 # Set up the database connection
 conn = psycopg2.connect(
-    host=os.getenv('DB_HOST'),
-    port=os.getenv('DB_PORT'),
-    dbname=os.getenv('DB_NAME'),
-    user=os.getenv('DB_USER'),
-    password=os.getenv('DB_PASSWORD')
+    host= "127.0.0.1",
+    port= "5466",
+    dbname= "enum_db",
+    user= "enum",
+    password= "enum"
 )
 
 @app.route('/apm-dbm')
