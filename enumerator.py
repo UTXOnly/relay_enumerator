@@ -87,45 +87,45 @@ def resolve_hosts(hosts, conn):
             conn.rollback()
     return results
 #working scan host and threading
+
 def scan_host(host, hostname, scanner, conn):
     print(f"Scanning host {hostname} ({host})...")
     try:
-        scanner.scan(host)
-        results = scanner[host]['tcp']
-    except Exception as e:
-        print(f"{RED}Error scanning host {hostname} ({host}): {str(e)}{RESET}")
-        return None
-
-    cur = conn.cursor()
-    open_ports = []
-    try:
-        for port, data in results.items():
-            if data['state'] == 'open':
-                open_ports.append(port)
-
-        if 5432 in open_ports:
-            print(f"{GREEN}Port 5432 is open on host {RESET}{hostname} ({host})!")
-            cur.execute("UPDATE hosts SET postgres_open = true WHERE hostname = %s", (hostname,))
-            conn.commit()
-            print(f"{GREEN}Database record updated for host {RESET}{hostname} ({host}){RESET}")
-            
-        cur.execute("UPDATE hosts SET open_ports = %s WHERE hostname = %s", (open_ports, hostname))
-        conn.commit()
-        print(f"{GREEN}Open ports ({open_ports}) updated in the database for host {RESET}{hostname} ({host}){RESET}")
-        
+        cur = conn.cursor()
         cur.execute("SELECT last_scanned FROM hosts WHERE hostname = %s", (hostname,))
         last_scanned = cur.fetchone()[0]
-        
+
         if last_scanned is None or time.time() - last_scanned >= 24 * 60 * 60:
+            scanner.scan(host)
+            results = scanner[host]['tcp']
+
+            open_ports = []
+            for port, data in results.items():
+                if data['state'] == 'open':
+                    open_ports.append(port)
+
+            if 5432 in open_ports:
+                print(f"{GREEN}Port 5432 is open on host {RESET}{hostname} ({host})!")
+                cur.execute("UPDATE hosts SET postgres_open = true WHERE hostname = %s", (hostname,))
+                conn.commit()
+                print(f"{GREEN}Database record updated for host {RESET}{hostname} ({host}){RESET}")
+
+            cur.execute("UPDATE hosts SET open_ports = %s WHERE hostname = %s", (open_ports, hostname))
+            conn.commit()
+            print(f"{GREEN}Open ports ({open_ports}) updated in the database for host {RESET}{hostname} ({host}){RESET}")
+
             cur.execute("UPDATE hosts SET last_scanned = %s WHERE hostname = %s", (int(time.time()), hostname))
             conn.commit()
             print(f"{GREEN}Last scanned timestamp updated in the database for host {RESET}{hostname} ({host}){RESET}")
+
+        else:
+            print(f"{YELLOW}Skipping host{RESET} {hostname} ({host}){YELLOW} from port scan as it was recently scanned.{RESET}")
+    
     except Exception as e:
         print(f"{RED}Error updating database for host {hostname} ({host}): {str(e)}{RESET}")
         conn.rollback()
 
     return hostname
-
 
 def scan_hosts_concurrently(hosts, scanner, conn):
     loop = asyncio.get_event_loop()
@@ -135,10 +135,8 @@ def scan_hosts_concurrently(hosts, scanner, conn):
             loop.run_in_executor(executor, scan_host, host, hostname, scanner, conn)
             for hostname, host in hosts.items()
         ]
-
         # Await the completion of all tasks
         results = loop.run_until_complete(asyncio.gather(*scan_tasks))
-
     return results
 
 def connect_to_postgres(hosts, credentials):
@@ -162,7 +160,6 @@ def list_checker(conn):
     rows = cur.fetchall()
     for row in rows:
         host, open_ports = row
-         
         if open_ports is None:   # Skip the row if open_ports is None
             continue
         elif not isinstance(open_ports, list):
@@ -187,17 +184,11 @@ def main():
             user=os.getenv('DB_USER'),
             password=os.getenv('DB_PASSWORD')
         )
-
-        # Load environment variables from .env file
         load_dotenv()
-
-        # Initialize the database
         initialize_database(conn)
 
-        # Read hostnames from file
         hostnames = read_hostnames_file()
 
-        # Resolve hosts asynchronously
         host_dict = resolve_hosts(hostnames, conn)
         print(host_dict)
 

