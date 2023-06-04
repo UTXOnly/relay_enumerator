@@ -224,7 +224,9 @@ def list_checker():
     for row in rows:
         host = row[0]
         open_ports = row[1]
-        if not isinstance(open_ports, list):
+        if open_ports is None:   # Skip the row if open_ports is None
+            continue
+        elif not isinstance(open_ports, list):
             port_list = []
             for port in open_ports.split(','):
                 port = port.strip()
