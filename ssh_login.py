@@ -72,13 +72,12 @@ def ssh_login(username_file, password_file):
             print(f"{RED}Error: {RESET}{str(e)}")
             break
 
-def run_ssh_login(username_file, password_file):
-    thread = threading.Thread(target=ssh_login, args=(username_file, password_file))
-    thread.start()
+async def run_ssh_login(username_file, password_file):
+    await asyncio.to_thread(ssh_login, username_file, password_file)
 
 async def main():
     while True:
-        run_ssh_login('usernames.txt', 'passwords.txt')
+        await run_ssh_login('usernames.txt', 'passwords.txt')
         await asyncio.sleep(0.1)
 
 if __name__ == '__main__':
