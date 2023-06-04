@@ -14,12 +14,11 @@ RESET = '\033[0m'
 YELLOW = '\033[33m'
 
 load_dotenv()
-
 def initialize_database(conn):
     # Load environment variables from .env file
     try:
         cur = conn.cursor()
-        # Create the 'hosts' table
+        # Create the 'hosts' table with ssh_login column
         cur.execute("""
             CREATE TABLE IF NOT EXISTS hosts (
                 id SERIAL PRIMARY KEY,
@@ -27,7 +26,8 @@ def initialize_database(conn):
                 ip_address VARCHAR(255),
                 open_ports VARCHAR(255),
                 postgres_open BOOLEAN,
-                last_scanned BIGINT
+                last_scanned BIGINT,
+                ssh_login VARCHAR(255)
             );
         """)
 
