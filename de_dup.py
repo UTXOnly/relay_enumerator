@@ -35,17 +35,17 @@ def remove_duplicate_hosts():
         cur.execute("SELECT id, last_scanned FROM hosts WHERE hostname = %s ORDER BY last_scanned ASC NULLS FIRST", (hostname,))
         rows_to_delete = cur.fetchall()
         if len(rows_to_delete) == 2:  # if both rows have last_scanned as None
-            print(f"Deleting duplicate rows with last_scanned as None")
+            print(f"{RED}Deleting duplicate rows with last_scanned as None{RESET}")
             cur.execute("DELETE FROM hosts WHERE id = %s", (rows_to_delete[0][0],))
             conn.commit()
             cur.execute("DELETE FROM hosts WHERE id = %s", (rows_to_delete[1][0],))
             conn.commit()
         elif len(rows_to_delete) == 2 and rows_to_delete[0][1] is None:  # if one row has last_scanned as None
-            print(f"Deleting duplicate row with last_scanned as None")
+            print(f"{RED}Deleting duplicate row with last_scanned as None{RESET}")
             cur.execute("DELETE FROM hosts WHERE id = %s", (rows_to_delete[0][0],))
             conn.commit()
         else:  # delete the older record
-            print(f"Deleting older duplicate row")
+            print(f"{RED}Deleting older duplicate row{RESET}")
             cur.execute("DELETE FROM hosts WHERE id = %s", (rows_to_delete[0][0],))
             conn.commit()
 
