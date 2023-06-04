@@ -106,6 +106,10 @@ async def scan_host(host, hostname, scanner):
             print(f"{YELLOW}Skipping host {hostname} ({host}): already scanned within the last 24 hours{RESET}")
             return None
 
+        cur.execute("UPDATE hosts SET last_scanned = %s WHERE hostname = %s", (int(time.time()), hostname))
+        conn.commit()
+        print(f"{GREEN}Last scanned timestamp updated in the database for host {RESET}{hostname} ({host}){RESET}")
+
         scanner.scan(host)
         results = scanner[host]['tcp']
 
@@ -126,14 +130,13 @@ async def scan_host(host, hostname, scanner):
                 traceback.print_exc()
                 return None
 
+        if len(open_ports) == 0:
+            open_ports = ['offline']
+
         open_ports_str = ','.join(str(port) for port in open_ports)
-        cur.execute("UPDATE hosts SET open_ports = %s WHERE hostname = %s", ([str(port) for port in open_ports], hostname))
+        cur.execute("UPDATE hosts SET open_ports = %s WHERE hostname = %s", (open_ports_str, hostname))
         conn.commit()
         print(f"{GREEN}Open ports ({open_ports}) updated in the database for host {RESET}{hostname} ({host}){RESET}")
-
-        cur.execute("UPDATE hosts SET last_scanned = %s WHERE hostname = %s", (int(time.time()), hostname))
-        conn.commit()
-        print(f"{GREEN}Last scanned timestamp updated in the database for host {RESET}{hostname} ({host}){RESET}")
 
         return hostname
 
