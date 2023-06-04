@@ -25,6 +25,7 @@ services:
           {
             "dbm": true,
             "username": "datadog",
+            "password" : "datadog",
             "host": "172.18.0.2",
             "disable_generic_tags": true
           }
