@@ -76,8 +76,8 @@ credentials = {
 
 async def resolve_hosts(hosts):
     results = {}
+    cur = conn.cursor()
     for host in hosts:
-        cur = conn.cursor()
         cur.execute("SELECT ip_address FROM hosts WHERE hostname = %s", (host,))
         result = cur.fetchone()
         if result is not None:
@@ -91,8 +91,9 @@ async def resolve_hosts(hosts):
                 except socket.error as err:
                     print(f"Error resolving {host}: {err}")
                     ip_address = None
-                    cur.execute("INSERT INTO hosts (hostname, ip_address, open_ports) VALUES (%s, %s, %s)", (host, ip_address, None))
-                    conn.commit()
+            else:
+                # Host already exists in the database, no need to add it again
+                continue
         else:
             try:
                 ip = await asyncio.get_event_loop().getaddrinfo(host, None)
@@ -102,8 +103,6 @@ async def resolve_hosts(hosts):
             except socket.error as err:
                 print(f"Error resolving {host}: {err}")
                 ip_address = None
-                cur.execute("INSERT INTO hosts (hostname, ip_address, open_ports) VALUES (%s, %s, %s)", (host, ip_address, None))
-                conn.commit()
 
         results[host] = ip_address
 
