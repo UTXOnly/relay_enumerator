@@ -6,7 +6,7 @@ import paramiko
 import traceback
 import time
 import os
-#from ssh_login import ssh_login
+import concurrent.futures
 from dotenv import load_dotenv
 
 GREEN = '\033[32m'
@@ -73,8 +73,6 @@ credentials = {
     'admin': 'admin',
     'admin': 'password'
 }
-
-import concurrent.futures
 
 async def resolve_hosts(hosts):
     results = {}
@@ -152,29 +150,6 @@ async def scan_hosts_concurrently(hosts, scanner):
     return results
 
 
-
-
-
-
-
-# Define the function to run if conditions are met
-async def postgres_enum(ip_address, port_list):
-
-    cur = conn.cursor()
-    
-    # Query the database for rows with a list of ports in the open_ports column
-    cur.execute("SELECT hostname, open_ports FROM hosts WHERE open_ports IS NOT NULL")
-    
-    # Loop through the results
-    for row in cur.fetchall():
-        ip_address = row[0]
-        open_ports = row[1]
-        if isinstance(open_ports, list) and ip_address is not None:
-            # Call the function with the IP address and port list
-            postgres_enum(ip_address, open_ports)
-
-
-
 async def connect_to_postgres(hosts, credentials):
     for host in hosts:
         for username, password in credentials.items():
@@ -213,7 +188,6 @@ def list_checker():
 async def main():
     try:
         # Resolve hosts asynchronously
-        list_checker()
         host_dict = await resolve_hosts(hostnames)
         print(host_dict)
 
@@ -235,5 +209,6 @@ async def main():
 
 # Run the main function
 asyncio.run(main())
+
 
 
