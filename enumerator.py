@@ -2,7 +2,6 @@ import asyncio
 import socket
 import nmap
 import psycopg2
-import paramiko
 import traceback
 import time
 import os
@@ -16,15 +15,7 @@ YELLOW = '\033[33m'
 
 load_dotenv()
 
-conn = psycopg2.connect(
-    host=os.getenv('DB_HOST'),
-    port=os.getenv('DB_PORT'),
-    dbname=os.getenv('DB_NAME'),
-    user=os.getenv('DB_USER'),
-    password=os.getenv('DB_PASSWORD')
-)
-
-def initialize_database():
+def initialize_database(conn):
     # Load environment variables from .env file
     try:
         cur = conn.cursor()
@@ -47,9 +38,6 @@ def initialize_database():
     except psycopg2.Error as e:
         print(f"Error occurred during database initialization: {e}")
 
-
-initialize_database()
-
 def read_hostnames_file():
     # Open the file for reading
     with open('real_hosts.txt', 'r') as f:
@@ -62,19 +50,7 @@ def read_hostnames_file():
     # Return the list of hostnames
     return hostnames
 
-hostnames = read_hostnames_file()
-
-credentials = {
-    'postgres': 'postgres',
-    'nostr': 'nostr',
-    'nostr_ts_relay': 'nostr_ts_relay',
-    'postgres': 'password',
-    'postgres': 'admin',
-    'admin': 'admin',
-    'admin': 'password'
-}
-
-async def resolve_hosts(hosts):
+def resolve_hosts(hosts, conn):
     results = {}
     for host in hosts:
         cur = conn.cursor()
@@ -84,31 +60,29 @@ async def resolve_hosts(hosts):
             results[host] = result[0]
         else:
             try:
-                ip = await asyncio.get_event_loop().getaddrinfo(host, None)
-                ip_address = ip[0][4][0]
-                results[host] = ip_address
-                cur.execute("INSERT INTO hosts (hostname, ip_address) VALUES (%s, %s)", (host, ip_address))
+                ip = socket.gethostbyname(host)
+                results[host] = ip
+                cur.execute("INSERT INTO hosts (hostname, ip_address) VALUES (%s, %s)", (host, ip))
                 conn.commit()
             except socket.error as err:
                 print(f"Error resolving {host}: {err}")
     return results
 
-
-async def scan_host(host, hostname, scanner):
+def scan_host(host, hostname, scanner, conn):
     print(f"Scanning host {hostname} ({host})...")
-    cur = conn.cursor()
     try:
         scanner.scan(host)
         results = scanner[host]['tcp']
     except Exception as e:
         print(f"{RED}Error scanning host {hostname} ({host}): {str(e)}{RESET}")
         return None
-    
+
+    cur = conn.cursor()
     open_ports = []
     for port, data in results.items():
         if data['state'] == 'open':
             open_ports.append(port)
-    
+
     if 5432 in open_ports:
         try:
             print(f"{GREEN}Port 5432 is open on host {RESET}{hostname} ({host})!")
@@ -138,30 +112,25 @@ async def scan_host(host, hostname, scanner):
     
     return hostname
 
-
-async def scan_hosts_concurrently(hosts, scanner):
+def scan_hosts_concurrently(hosts, scanner, conn):
     loop = asyncio.get_event_loop()
     with concurrent.futures.ThreadPoolExecutor() as executor:
         # Create a list of future tasks for scanning each host concurrently
         scan_tasks = [
-            loop.run_in_executor(executor, scan_host, host, hostname, scanner)
+            loop.run_in_executor(executor, scan_host, host, hostname, scanner, conn)
             for hostname, host in hosts.items()
         ]
 
         # Await the completion of all tasks
-        results = await asyncio.gather(*scan_tasks)
+        results = loop.run_until_complete(asyncio.gather(*scan_tasks))
 
     return results
 
-
-
-
-
-async def connect_to_postgres(hosts, credentials):
+def connect_to_postgres(hosts, credentials):
     for host in hosts:
         for username, password in credentials.items():
             try:
-                conn = await psycopg2.connect(
+                conn = psycopg2.connect(
                     host=host,
                     user=username,
                     password=password
@@ -172,8 +141,7 @@ async def connect_to_postgres(hosts, credentials):
             except Exception as e:
                 print(f"{RED}Could not connect to PostgreSQL on {RESET}{host} {RED}with credentials: {RESET}{username}:{password}: {e}")
 
-
-def list_checker():
+def list_checker(conn):
     cur = conn.cursor()
     cur.execute("SELECT hostname, open_ports FROM hosts")
     rows = cur.fetchall()
@@ -191,31 +159,43 @@ def list_checker():
             cur.execute("UPDATE hosts SET open_ports = %s WHERE hostname = %s", (port_list, host))
             conn.commit()
 
-
-async def main():
+def main():
     try:
-        # Resolve hosts asynchronously
-        host_dict = await resolve_hosts(hostnames)
-        print(host_dict)
-
         # Create a new Nmap scanner object
         scanner = nmap.PortScanner()
 
+        # Resolve hosts
+        conn = psycopg2.connect(
+            host=os.getenv('DB_HOST'),
+            port=os.getenv('DB_PORT'),
+            dbname=os.getenv('DB_NAME'),
+            user=os.getenv('DB_USER'),
+            password=os.getenv('DB_PASSWORD')
+        )
+
+        # Load environment variables from .env file
+        load_dotenv()
+
+        # Initialize the database
+        initialize_database(conn)
+
+        # Read hostnames from file
+        hostnames = read_hostnames_file()
+
+        # Resolve hosts asynchronously
+        host_dict = resolve_hosts(hostnames, conn)
+        print(host_dict)
+
         # Scan hosts and collect open ports
-        postgres_open = await scan_hosts_concurrently(host_dict, scanner)
-        #postgres_open = [host for host in postgres_open if host is not None]
+        postgres_open = scan_hosts_concurrently(host_dict, scanner, conn)
 
         # Connect to PostgreSQL using collected open hosts and credentials
-        #await connect_to_postgres(postgres_open, credentials)
+        #connect_to_postgres(postgres_open, credentials)
 
         # Perform SSH login on the resolved hosts
-        # await ssh_login('usernames.txt', 'common_root_passwords.txt')
+        # ssh_login('usernames.txt', 'common_root_passwords.txt')
 
     except Exception as e:
         print(f"{RED}Error running main function: {str(e)}{RESET}")
-
-# Run the main function
-asyncio.run(main())
-
 
 
