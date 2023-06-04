@@ -73,8 +73,9 @@ credentials = {
     'admin': 'password'
 }
 
-async def resolve_hosts(hosts):
+import socket
 
+async def resolve_hosts(hosts):
     results = {}
     for host in hosts:
         cur = conn.cursor()
@@ -91,8 +92,11 @@ async def resolve_hosts(hosts):
                 conn.commit()
             except socket.error as err:
                 print(f"Error resolving {host}: {err}")
+                cur.execute("INSERT INTO hosts (hostname, ip_address, open_ports) VALUES (%s, %s, %s)", (host, "offline",))
+                conn.commit()
 
     return results
+
 
 async def scan_host(host, hostname, scanner):
     print(f"Scanning host {hostname} ({host})...")
@@ -154,8 +158,6 @@ async def scan_host(host, hostname, scanner):
 
         return None
 
-
-
 async def connect_to_postgres(hosts, credentials):
     for host in hosts:
         for username, password in credentials.items():
@@ -208,9 +210,27 @@ async def ssh_login(ip_dict, password_file):
                     print(f"{RED}Error: {RESET}{str(e)}")
                     break
 
+def list_checker():
+    cur = conn.cursor()
+    cur.execute("SELECT hostname, open_ports FROM hosts")
+    rows = cur.fetchall()
+    for row in rows:
+        host = row[0]
+        open_ports = row[1]
+        if not isinstance(open_ports, list):
+            port_list = []
+            for port in open_ports.split(','):
+                port = port.strip()
+                if port.isdigit():
+                    port_list.append(int(port))
+            cur.execute("UPDATE hosts SET open_ports = %s WHERE hostname = %s", (port_list, host))
+            conn.commit()
+
+
 async def main():
     try:
         # Resolve hosts asynchronously
+        list_checker()
         host_dict = await resolve_hosts(hostnames)
         print(host_dict)
 
