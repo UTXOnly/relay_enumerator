@@ -30,7 +30,7 @@ def initialize_database(conn):
                 ssh_login VARCHAR(255)
             );
         """)
-        cur.execute("ALTER TABLE hosts ADD ssh_login VARCHAR(255);")
+
         conn.commit()
         print("Database initialization complete.")
     except psycopg2.Error as e:
