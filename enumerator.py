@@ -130,9 +130,14 @@ async def scan_host(host, hostname, scanner):
             print(f"{YELLOW}Skipping host {hostname} ({host}): already exists in the database{RESET}")
             return None
 
-        cur.execute("INSERT INTO hosts (hostname, ip_address) VALUES (%s, %s)", (hostname, host))
-        conn.commit()
-        print(f"{GREEN}New host {hostname} ({host}) added to the database{RESET}")
+        try:
+            cur.execute("INSERT INTO hosts (hostname, ip_address) VALUES (%s, %s)", (hostname, host))
+            conn.commit()
+            print(f"{GREEN}New host {hostname} ({host}) added to the database{RESET}")
+        except Exception as e:
+            print(f"{RED}Error inserting host {hostname} ({host}) into the database: {str(e)}{RESET}")
+            traceback.print_exc()
+            return None
 
         scanner.scan(host)
         results = scanner[host]['tcp']
@@ -165,6 +170,7 @@ async def scan_host(host, hostname, scanner):
         print(f"{RED}Error occurred while scanning host {hostname} ({host}): {str(e)}")
         traceback.print_exc()
         return None
+
 
 
 
