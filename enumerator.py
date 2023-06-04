@@ -74,6 +74,8 @@ credentials = {
     'admin': 'password'
 }
 
+import concurrent.futures
+
 async def resolve_hosts(hosts):
     results = {}
     for host in hosts:
@@ -137,6 +139,18 @@ async def scan_host(host, hostname, scanner):
             print(f"{RED}Error updating last scanned timestamp for host {hostname} ({host}): {str(e)}{RESET}")
     
     return hostname
+
+
+async def scan_hosts_concurrently(hosts, scanner):
+    with concurrent.futures.ThreadPoolExecutor() as executor:
+        # Create a list of future tasks for scanning each host concurrently
+        scan_tasks = [executor.submit(scan_host, host, hostname, scanner) for hostname, host in hosts.items()]
+
+        # Await the completion of all tasks
+        results = await asyncio.gather(*scan_tasks)
+
+    return results
+
 
 
 
@@ -207,20 +221,19 @@ async def main():
         scanner = nmap.PortScanner()
 
         # Scan hosts and collect open ports
-        postgres_open = await asyncio.gather(
-            *[scan_host(host, hostname, scanner) for hostname, host in host_dict.items()]
-        )
+        postgres_open = await scan_hosts_concurrently(host_dict, scanner)
         postgres_open = [host for host in postgres_open if host is not None]
 
         # Connect to PostgreSQL using collected open hosts and credentials
         await connect_to_postgres(postgres_open, credentials)
 
         # Perform SSH login on the resolved hosts
-        #await ssh_login('usernames.txt', 'common_root_passwords.txt')
-        
+        # await ssh_login('usernames.txt', 'common_root_passwords.txt')
+
     except Exception as e:
         print(f"{RED}Error running main function: {str(e)}{RESET}")
 
 # Run the main function
 asyncio.run(main())
+
 
