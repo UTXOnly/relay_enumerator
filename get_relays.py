@@ -2,7 +2,6 @@ import requests
 
 URL = "https://api.nostr.watch/v1/public"
 
-
 response = requests.get(URL)
 
 if response.status_code == 200:

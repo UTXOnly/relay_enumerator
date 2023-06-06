@@ -38,11 +38,10 @@ def initialize_database(conn):
                 ssh_login VARCHAR(255)
             );
         """)
-
         conn.commit()
         print("Database initialization complete.")
-    except psycopg2.Error as e:
-        print(f"Error occurred during database initialization: {e}")
+    except psycopg2.Error as caught_error:
+        print(f"Error occurred during database initialization: {caught_error}")
 
 def read_hostnames_file():
     with open('real_hosts.txt', 'r', encoding='utf-8') as open_file:
@@ -54,36 +53,18 @@ def resolve_hosts(hosts, conn):
     results = {}
     for host in hosts:
         cur = conn.cursor()
-        cur.execute("SELECT ip_address FROM hosts WHERE hostname = %s", (host,))
-        result = cur.fetchone()
-        if result is not None:
-            results[host] = result[0]
-        else:
-            try:
-                ip = socket.gethostbyname(host)
-                results[host] = ip
-                cur.execute("INSERT INTO hosts (hostname, ip_address) VALUES (%s, %s)", (host, ip))
-                conn.commit()
-            except socket.error as err:
-                print(f"Error resolving {host}: {err}")
-    return results
-
-def resolve_hosts(hosts, conn):
-    results = {}
-    for host in hosts:
-        cur = conn.cursor()
         try:
             cur.execute("SELECT ip_address FROM hosts WHERE hostname = %s", (host,))
             result = cur.fetchone()
             if result is not None:
                 results[host] = result[0]
             else:
-                ip = socket.gethostbyname(host)
-                results[host] = ip
+                ip_address = socket.gethostbyname(host)
+                results[host] = ip_address
                 cur.execute("INSERT INTO hosts (hostname, ip_address) VALUES (%s, %s)", (host, ip))
                 conn.commit()
-        except Exception as e:
-            print(f"Error resolving {host}: {str(e)}")
+        except Exception as caught_error:
+            print(f"Error resolving {host}: {str(caught_error)}")
             conn.rollback()
     return results
 
@@ -113,8 +94,8 @@ def scan_host(host, hostname, scanner, conn):
             print(f"{GREEN}Last scanned timestamp updated in the database for host {RESET}{hostname} ({host}){RESET}")
         else:
             print(f"{YELLOW}Skipping host{RESET} {hostname} ({host}){YELLOW} from port scan as it was recently scanned.{RESET}")
-    except Exception as e:
-        print(f"{RED}Error updating database for host {hostname} ({host}): {str(e)}{RESET}")
+    except Exception as caught_error:
+        print(f"{RED}Error updating database for host {hostname} ({host}): {str(caught_error)}{RESET}")
         conn.rollback()
     return hostname
 
@@ -167,10 +148,7 @@ def main():
         # Perform SSH login on the resolved hosts
         # ssh_login('usernames.txt', 'common_root_passwords.txt')
 
-    except Exception as e:
-        print(f"{RED}Error running main function: {str(e)}{RESET}")
+    except Exception as caught_error:
+        print(f"{RED}Error running main function: {str(caught_error)}{RESET}")
 
 main()
-
-
-

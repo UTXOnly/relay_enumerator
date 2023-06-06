@@ -1,9 +1,10 @@
 import os
 import gzip
 
-GREEN = '\033[32m'
-RED = '\033[31m'
-RESET = '\033[0m'
+GREEN = os.getenv('GREEN')
+RED = os.getenv('RED')
+RESET = os.getenv('RESET')
+YELLOW = os.getenv('YELLOW')
 
 # Define the input file name and output file names
 INPUT_FILE = 'rockyou.txt'
@@ -27,12 +28,11 @@ try:
         with gzip.open(OUTPUT_FILE2, 'wb') as f_out2:
             f_out2.write(f_in.read(chunk_size))
             print(f'{GREEN}Writing {RESET} {chunk_size}{GREEN} bytes to{RESET} {OUTPUT_FILE2}')
-    
     # Print a message indicating that the splitting and compression is complete
     print(f'{GREEN}File splitting and compression complete.{RESET}')
 
 except FileNotFoundError:
     print(f'{RED}Error: {RESET}{INPUT_FILE} {RED}not found.')
-    
+
 except Exception as e:
     print(f'{RED}Error: {RESET}{e}')
