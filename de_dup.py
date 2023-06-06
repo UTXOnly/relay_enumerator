@@ -3,15 +3,12 @@ This module handles the removal of duplicate hosts from the database.
 """
 
 from dotenv import load_dotenv
-import connection_param
+from connection_param import Color, Connection
+
+conn = Connection()
+colors = Color()
 
 load_dotenv()
-
-conn = connection_param.conn
-GREEN = connection_param.GREEN
-RED = connection_param.RED
-RESET = connection_param.RESET
-YELLOW = connection_param.YELLOW
 
 def remove_duplicate_hosts():
     """
@@ -31,18 +28,19 @@ def remove_duplicate_hosts():
         )
         rows_to_delete = cur.fetchall()
         if len(rows_to_delete) == 2:  # if both rows have last_scanned as None
-            print(f"{RED}Deleting duplicate rows with last_scanned as None{RESET}")
+            print(f"{colors.RED}Deleting duplicate rows with last_scanned as None{colors.RESET}")
             cur.execute("DELETE FROM hosts WHERE id = %s", (rows_to_delete[0][0],))
             conn.commit()
             cur.execute("DELETE FROM hosts WHERE id = %s", (rows_to_delete[1][0],))
             conn.commit()
         elif len(rows_to_delete) == 2 and rows_to_delete[0][1] is None:  # if one row has last_scanned as None
-            print(f"{RED}Deleting duplicate row with last_scanned as None{RESET}")
+            print(f"{colors.RED}Deleting duplicate row with last_scanned as None{colors.RESET}")
             cur.execute("DELETE FROM hosts WHERE id = %s", (rows_to_delete[0][0],))
             conn.commit()
         else:  # delete the older record
-            print(f"{RED}Deleting older duplicate row{RESET}")
+            print(f"{colors.RED}Deleting older duplicate row{colors.RESET}")
             cur.execute("DELETE FROM hosts WHERE id = %s", (rows_to_delete[0][0],))
             conn.commit()
 
 remove_duplicate_hosts()
+

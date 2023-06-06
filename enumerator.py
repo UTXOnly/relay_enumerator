@@ -8,12 +8,12 @@ import socket
 import psycopg2
 import nmap
 from dotenv import load_dotenv
-from connection_param import connection_params, color_params
+from connection_param import Color, Connection
 
 load_dotenv()
 
-conn = connection_params.connect()
-colors = color_params
+conn = Connection()
+colors = Color()
 
 def initialize_database(conn):
     """

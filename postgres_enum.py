@@ -1,7 +1,7 @@
 import psycopg2
-from connection_param import color_params
+from connection_param import Color
 
-colors = color_params
+colors = Color()
 
 def connect_to_postgres(hosts, credentials):
     for host in hosts:

@@ -1,4 +1,4 @@
-import os
+
 import socket
 import threading
 import time
@@ -6,16 +6,15 @@ import traceback
 
 from queue import Queue
 
-import psycopg2
 import paramiko
 import random
 
 from ddtrace import tracer
 from dotenv import load_dotenv
-from connection_param import connection_params, color_params
+from connection_param import Color, Connection
 
-conn = connection_params.connect()
-colors = color_params 
+conn = Connection()
+colors = Color()
 
 USERNAME_FILE = "usernames.txt"
 PASSWORD_FILE = "common_root_passwords.txt"
