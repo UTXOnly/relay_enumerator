@@ -1,4 +1,4 @@
-# pylint: disable=C0301,C0114,C0115,W0718
+# pylint: disable=C0301,C0114,C0115,W0718, C0116
 # This line is longer than the maximum allowed length
 # Missing module docstring
 # Missing class docstring
@@ -13,10 +13,7 @@ from queue import Queue
 import random
 import paramiko
 
-try:
-    import ddtrace
-except ImportError:
-    pass
+from ddtrace import tracer
 
 from dotenv import load_dotenv
 from connection_param import Color, Connection
@@ -24,21 +21,14 @@ from connection_param import Color, Connection
 conn = Connection()
 colors = Color()
 
+tracer.configure(hostname='172.28.0.5', port=8126)
+
 USERNAME_FILE = "usernames.txt"
 PASSWORD_FILE = "common_root_passwords.txt"
 MAX_RETRIES = 3
 MAX_CONNECTIONS = 45
 
 load_dotenv()
-
-tracer = None
-
-try:
-    tracer = ddtrace.tracer
-    tracer.configure(hostname='172.28.0.5', port=8126)
-except NameError:
-    pass
-
 
 class SSHConnectionThread(threading.Thread):
     """Thread class for establishing SSH connections."""

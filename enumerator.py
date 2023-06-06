@@ -17,12 +17,12 @@ load_dotenv()
 conn = Connection()
 colors = Color()
 
-def initialize_database(conn):
+def initialize_database(connection_object):
     """
     Initialize the database by creating the necessary table if it doesn't exist.
     """
     try:
-        cur = conn.cursor()
+        cur = connection_object.cursor()
         cur.execute("""
             CREATE TABLE IF NOT EXISTS hosts (
                 id SERIAL PRIMARY KEY,
@@ -34,7 +34,7 @@ def initialize_database(conn):
                 ssh_login VARCHAR(255)
             );
         """)
-        conn.commit()
+        connection_object.commit()
         print("Database initialization complete.")
     except psycopg2.Error as caught_error:
         print(f"Error occurred during database initialization: {caught_error}")
@@ -48,13 +48,13 @@ def read_hostnames_file():
     hostnames = [hostname.strip() for hostname in hostnames]
     return hostnames
 
-def resolve_hosts(hosts, conn):
+def resolve_hosts(hosts, connection_object):
     """
     Resolve the IP addresses of the given hostnames and store them in the database.
     """
     results = {}
     for host in hosts:
-        cur = conn.cursor()
+        cur = connection_object.cursor()
         try:
             cur.execute("SELECT ip_address FROM hosts WHERE hostname = %s", (host,))
             result = cur.fetchone()
@@ -64,22 +64,22 @@ def resolve_hosts(hosts, conn):
                 ip_address = socket.gethostbyname(host)
                 results[host] = ip_address
                 cur.execute("INSERT INTO hosts (hostname, ip_address) VALUES (%s, %s)", (host, ip_address))
-                conn.commit()
+                connection_object.commit()
         except socket.gaierror as caught_error:
             print(f"Error resolving {host}: {str(caught_error)}")
-            conn.rollback()
+            connection_object.rollback()
         except psycopg2.Error as caught_error:
             print(f"Error updating database for host {host}: {str(caught_error)}")
-            conn.rollback()
+            connection_object.rollback()
     return results
 
-def scan_host(host, hostname, scanner, conn):
+def scan_host(host, hostname, scanner, connection_object):
     """
     Scan the specified host for open ports and update the database with the results.
     """
     print(f"Scanning host {hostname} ({host})...")
     try:
-        cur = conn.cursor()
+        cur = connection_object.cursor()
         cur.execute("SELECT last_scanned FROM hosts WHERE hostname = %s", (hostname,))
         last_scanned = cur.fetchone()[0]
         if last_scanned is None or time.time() - last_scanned >= 24 * 60 * 60:
@@ -89,19 +89,19 @@ def scan_host(host, hostname, scanner, conn):
             if 5432 in open_ports:
                 print(f"{colors.GREEN}Port 5432 is open on host {colors.RESET}{hostname} ({host})!")
                 cur.execute("UPDATE hosts SET postgres_open = true WHERE hostname = %s", (hostname,))
-                conn.commit()
+                connection_object.commit()
                 print(f"{colors.GREEN}Database record updated for host {colors.RESET}{hostname} ({host}){colors.RESET}")
             cur.execute("UPDATE hosts SET open_ports = %s WHERE hostname = %s", (open_ports, hostname))
-            conn.commit()
+            connection_object.commit()
             print(f"{colors.GREEN}Open ports ({open_ports}) updated in the database for host {colors.RESET}{hostname} ({host}){colors.RESET}")
             cur.execute("UPDATE hosts SET last_scanned = %s WHERE hostname = %s", (int(time.time()), hostname))
-            conn.commit()
+            connection_object.commit()
             print(f"{colors.GREEN}Last scanned timestamp updated in the database for host {colors.RESET}{hostname} ({host}){colors.RESET}")
         else:
             print(f"{colors.YELLOW}Skipping host{colors.RESET} {hostname} ({host}){colors.YELLOW} from port scan as it was recently scanned.{colors.RESET}")
     except psycopg2.Error as caught_error:
         print(f"{colors.RED}Error updating database for host {hostname} ({host}): {str(caught_error)}{colors.RESET}")
-        conn.rollback()
+        connection_object.rollback()
     return hostname
 
 
@@ -132,14 +132,6 @@ def main():
 
         # Scan hosts and collect open ports
         scan_hosts_concurrently(host_dict, scanner, conn)
-
-    except socket.gaierror as caught_error:
-        print(f"{colors.RED}Error resolving host: {str(caught_error)}{colors.RESET}")
-        conn.rollback()
-
-    except psycopg2.Error as caught_error:
-        print(f"{colors.RED}Error updating database: {str(caught_error)}{colors.RESET}")
-        conn.rollback()
 
     except Exception as caught_error:
         print(f"{colors.RED}Error running main function: {str(caught_error)}{colors.RESET}")

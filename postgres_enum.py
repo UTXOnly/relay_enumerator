@@ -1,4 +1,4 @@
-# pylint: disable=C0301,C0114,C0115,W0718
+# pylint: disable=C0301,C0114,C0115,W0718, W0612, C0116
 # This line is longer than the maximum allowed length
 # Missing module docstring
 # Missing class docstring
