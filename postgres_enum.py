@@ -1,9 +1,7 @@
 import psycopg2
+from connection_param import color_params
 
-GREEN = '\033[32m'
-RED = '\033[31m'
-RESET = '\033[0m'
-YELLOW = '\033[33m'
+colors = color_params
 
 def connect_to_postgres(hosts, credentials):
     for host in hosts:
@@ -14,7 +12,7 @@ def connect_to_postgres(hosts, credentials):
                     user=username,
                     password=password
                 )
-                print(f"{GREEN}Successfully connected to PostgreSQL on {RESET}{host} {GREEN}using credentials: {RESET}{username}:{password}")
+                print(f"{colors.GREEN}Successfully connected to PostgreSQL on {colors.RESET}{host} {colors.GREEN}using credentials: {colors.RESET}{username}:{password}")
                 break  # Stop trying credentials if one works
             except psycopg2.OperationalError as caught_error:
-                print(f"{RED}Could not connect to PostgreSQL on {RESET}{host} {RED}with credentials: {RESET}{username}:{password}: {caught_error}")
+                print(f"{colors.RED}Could not connect to PostgreSQL on {colors.RESET}{host} {colors.RED}with credentials: {colors.RESET}{username}:{password}: {caught_error}")

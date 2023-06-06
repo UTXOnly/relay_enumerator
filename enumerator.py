@@ -8,15 +8,12 @@ import socket
 import psycopg2
 import nmap
 from dotenv import load_dotenv
-import connection_param
+from connection_param import connection_params, color_params
 
 load_dotenv()
 
-conn = connection_param.conn
-GREEN = connection_param.GREEN
-RED = connection_param.RED
-RESET = connection_param.RESET
-YELLOW = connection_param.YELLOW
+conn = connection_params.connect()
+colors = color_params
 
 def initialize_database(conn):
     """
@@ -88,20 +85,20 @@ def scan_host(host, hostname, scanner, conn):
             results = scanner[host]['tcp']
             open_ports = [port for port, data in results.items() if data['state'] == 'open']
             if 5432 in open_ports:
-                print(f"{GREEN}Port 5432 is open on host {RESET}{hostname} ({host})!")
+                print(f"{colors.GREEN}Port 5432 is open on host {colors.RESET}{hostname} ({host})!")
                 cur.execute("UPDATE hosts SET postgres_open = true WHERE hostname = %s", (hostname,))
                 conn.commit()
-                print(f"{GREEN}Database record updated for host {RESET}{hostname} ({host}){RESET}")
+                print(f"{colors.GREEN}Database record updated for host {colors.RESET}{hostname} ({host}){colors.RESET}")
             cur.execute("UPDATE hosts SET open_ports = %s WHERE hostname = %s", (open_ports, hostname))
             conn.commit()
-            print(f"{GREEN}Open ports ({open_ports}) updated in the database for host {RESET}{hostname} ({host}){RESET}")
+            print(f"{colors.GREEN}Open ports ({open_ports}) updated in the database for host {colors.RESET}{hostname} ({host}){colors.RESET}")
             cur.execute("UPDATE hosts SET last_scanned = %s WHERE hostname = %s", (int(time.time()), hostname))
             conn.commit()
-            print(f"{GREEN}Last scanned timestamp updated in the database for host {RESET}{hostname} ({host}){RESET}")
+            print(f"{colors.GREEN}Last scanned timestamp updated in the database for host {colors.RESET}{hostname} ({host}){colors.RESET}")
         else:
-            print(f"{YELLOW}Skipping host{RESET} {hostname} ({host}){YELLOW} from port scan as it was recently scanned.{RESET}")
+            print(f"{colors.YELLOW}Skipping host{colors.RESET} {hostname} ({host}){colors.YELLOW} from port scan as it was recently scanned.{colors.RESET}")
     except psycopg2.Error as caught_error:
-        print(f"{RED}Error updating database for host {hostname} ({host}): {str(caught_error)}{RESET}")
+        print(f"{colors.RED}Error updating database for host {hostname} ({host}): {str(caught_error)}{colors.RESET}")
         conn.rollback()
     return hostname
 
@@ -165,15 +162,15 @@ def main():
         # ssh_login('usernames.txt', 'common_root_passwords.txt')
 
     except socket.gaierror as caught_error:
-        print(f"{RED}Error resolving host: {str(caught_error)}{RESET}")
+        print(f"{colors.RED}Error resolving host: {str(caught_error)}{colors.RESET}")
         conn.rollback()
 
     except psycopg2.Error as caught_error:
-        print(f"{RED}Error updating database: {str(caught_error)}{RESET}")
+        print(f"{colors.RED}Error updating database: {str(caught_error)}{colors.RESET}")
         conn.rollback()
 
     except Exception as caught_error:
-        print(f"{RED}Error running main function: {str(caught_error)}{RESET}")
+        print(f"{colors.RED}Error running main function: {str(caught_error)}{colors.RESET}")
 
 main()
 
