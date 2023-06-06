@@ -7,13 +7,10 @@ from queue import Queue
 import traceback
 import time
 import socket
-from ddtrace import tracer
-tracer.configure(hostname='172.28.0.5', port=8126)
+
 
 from dotenv import load_dotenv
 load_dotenv()
-
-os.environ["DD_DBM_PROPAGATION_MODE"] = "full"
 
 GREEN = '\033[32m'
 RED = '\033[31m'
