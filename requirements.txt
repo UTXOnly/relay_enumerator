@@ -3,4 +3,3 @@ paramiko
 python-nmap
 asyncio
 requests
-dotenv
