@@ -4,10 +4,10 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-GREEN = '\033[32m'
-RED = '\033[31m'
-RESET = '\033[0m'
-YELLOW = '\033[33m'
+GREEN = os.getenv('GREEN')
+RED = os.getenv('RED')
+RESET = os.getenv('RESET')
+YELLOW = os.getenv('YELLOW')
 
 conn = psycopg2.connect(
     host=os.getenv('DB_HOST'),
