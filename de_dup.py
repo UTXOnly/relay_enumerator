@@ -1,21 +1,13 @@
-import asyncio
-import socket
-import nmap
+import os
 import psycopg2
-import paramiko
-import traceback
-import time
-import os 
-import json
-import random
 from dotenv import load_dotenv
+
+load_dotenv()
 
 GREEN = '\033[32m'
 RED = '\033[31m'
 RESET = '\033[0m'
 YELLOW = '\033[33m'
-
-load_dotenv()
 
 conn = psycopg2.connect(
     host=os.getenv('DB_HOST'),

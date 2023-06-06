@@ -1,19 +1,27 @@
-import asyncio
-import socket
-import nmap
-import psycopg2
-import traceback
-import time
 import os
+import time
 import concurrent.futures
 from dotenv import load_dotenv
+import asyncio
+import socket
+import psycopg2
+import nmap
 
-GREEN = '\033[32m'
-RED = '\033[31m'
-RESET = '\033[0m'
-YELLOW = '\033[33m'
+GREEN = os.getenv('GREEN')
+RED = os.getenv('RED')
+RESET = os.getenv('RESET')
+YELLOW = os.getenv('YELLOW')
+
+conn = psycopg2.connect(
+    host=os.getenv('DB_HOST'),
+    port=os.getenv('DB_PORT'),
+    dbname=os.getenv('DB_NAME'),
+    user=os.getenv('DB_USER'),
+    password=os.getenv('DB_PASSWORD')
+)
 
 load_dotenv()
+
 def initialize_database(conn):
     # Load environment variables from .env file
     try:
@@ -37,13 +45,9 @@ def initialize_database(conn):
         print(f"Error occurred during database initialization: {e}")
 
 def read_hostnames_file():
-    # Open the file for reading
-    with open('real_hosts.txt', 'r') as f:
-        # Read all lines from the file into a list
-        hostnames = f.readlines()
-    # Strip newline characters from each line in the list
+    with open('real_hosts.txt', 'r', encoding='utf-8') as open_file:
+        hostnames = open_file.readlines()
     hostnames = [hostname.strip() for hostname in hostnames]
-    # Return the list of hostnames
     return hostnames
 
 def resolve_hosts(hosts, conn):
@@ -82,7 +86,6 @@ def resolve_hosts(hosts, conn):
             print(f"Error resolving {host}: {str(e)}")
             conn.rollback()
     return results
-#working scan host and threading
 
 def scan_host(host, hostname, scanner, conn):
     print(f"Scanning host {hostname} ({host})...")
@@ -90,37 +93,29 @@ def scan_host(host, hostname, scanner, conn):
         cur = conn.cursor()
         cur.execute("SELECT last_scanned FROM hosts WHERE hostname = %s", (hostname,))
         last_scanned = cur.fetchone()[0]
-
         if last_scanned is None or time.time() - last_scanned >= 24 * 60 * 60:
             scanner.scan(host)
             results = scanner[host]['tcp']
-
             open_ports = []
             for port, data in results.items():
                 if data['state'] == 'open':
                     open_ports.append(port)
-
             if 5432 in open_ports:
                 print(f"{GREEN}Port 5432 is open on host {RESET}{hostname} ({host})!")
                 cur.execute("UPDATE hosts SET postgres_open = true WHERE hostname = %s", (hostname,))
                 conn.commit()
                 print(f"{GREEN}Database record updated for host {RESET}{hostname} ({host}){RESET}")
-
             cur.execute("UPDATE hosts SET open_ports = %s WHERE hostname = %s", (open_ports, hostname))
             conn.commit()
             print(f"{GREEN}Open ports ({open_ports}) updated in the database for host {RESET}{hostname} ({host}){RESET}")
-
             cur.execute("UPDATE hosts SET last_scanned = %s WHERE hostname = %s", (int(time.time()), hostname))
             conn.commit()
             print(f"{GREEN}Last scanned timestamp updated in the database for host {RESET}{hostname} ({host}){RESET}")
-
         else:
             print(f"{YELLOW}Skipping host{RESET} {hostname} ({host}){YELLOW} from port scan as it was recently scanned.{RESET}")
-    
     except Exception as e:
         print(f"{RED}Error updating database for host {hostname} ({host}): {str(e)}{RESET}")
         conn.rollback()
-
     return hostname
 
 def scan_hosts_concurrently(hosts, scanner, conn):
@@ -134,21 +129,6 @@ def scan_hosts_concurrently(hosts, scanner, conn):
         # Await the completion of all tasks
         results = loop.run_until_complete(asyncio.gather(*scan_tasks))
     return results
-
-def connect_to_postgres(hosts, credentials):
-    for host in hosts:
-        for username, password in credentials.items():
-            try:
-                conn = psycopg2.connect(
-                    host=host,
-                    user=username,
-                    password=password
-                )
-                print(f"{GREEN}Successfully connected to PostgreSQL on {RESET}{host} {GREEN}using credentials: {RESET}{username}:{password}")
-                conn.close()
-                break  # Stop trying credentials if one works
-            except Exception as e:
-                print(f"{RED}Could not connect to PostgreSQL on {RESET}{host} {RED}with credentials: {RESET}{username}:{password}: {e}")
 
 def list_checker(conn):
     cur = conn.cursor()
@@ -169,18 +149,8 @@ def list_checker(conn):
 
 def main():
     try:
-        # Create a new Nmap scanner object
         scanner = nmap.PortScanner()
 
-        # Resolve hosts
-        conn = psycopg2.connect(
-            host=os.getenv('DB_HOST'),
-            port=os.getenv('DB_PORT'),
-            dbname=os.getenv('DB_NAME'),
-            user=os.getenv('DB_USER'),
-            password=os.getenv('DB_PASSWORD')
-        )
-        load_dotenv()
         initialize_database(conn)
 
         hostnames = read_hostnames_file()
@@ -189,7 +159,7 @@ def main():
         print(host_dict)
 
         # Scan hosts and collect open ports
-        postgres_open = scan_hosts_concurrently(host_dict, scanner, conn)
+        scan_hosts_concurrently(host_dict, scanner, conn)
 
         # Connect to PostgreSQL using collected open hosts and credentials
         #connect_to_postgres(postgres_open, credentials)
