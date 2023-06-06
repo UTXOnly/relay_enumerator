@@ -1,30 +1,34 @@
-import os
-import psycopg2
+"""
+This module handles the removal of duplicate hosts from the database.
+"""
+
 from dotenv import load_dotenv
+import connection_param
 
 load_dotenv()
 
-GREEN = os.getenv('GREEN')
-RED = os.getenv('RED')
-RESET = os.getenv('RESET')
-YELLOW = os.getenv('YELLOW')
-
-conn = psycopg2.connect(
-    host=os.getenv('DB_HOST'),
-    port=os.getenv('DB_PORT'),
-    dbname=os.getenv('DB_NAME'),
-    user=os.getenv('DB_USER'),
-    password=os.getenv('DB_PASSWORD')
-)
+conn = connection_param.conn
+GREEN = connection_param.GREEN
+RED = connection_param.RED
+RESET = connection_param.RESET
+YELLOW = connection_param.YELLOW
 
 def remove_duplicate_hosts():
+    """
+    Remove duplicate hosts from the database.
+    """
     cur = conn.cursor()
-    cur.execute("SELECT hostname, COUNT(*) FROM hosts GROUP BY hostname HAVING COUNT(*) > 1")  # find duplicate hostnames
+    cur.execute(
+        "SELECT hostname, COUNT(*) FROM hosts GROUP BY hostname HAVING COUNT(*) > 1"
+    )  # find duplicate hostnames
     rows = cur.fetchall()
     for row in rows:
         hostname = row[0]
         print(f"Processing duplicate hostname: {hostname}")
-        cur.execute("SELECT id, last_scanned FROM hosts WHERE hostname = %s ORDER BY last_scanned ASC NULLS FIRST", (hostname,))
+        cur.execute(
+            "SELECT id, last_scanned FROM hosts WHERE hostname = %s ORDER BY last_scanned ASC NULLS FIRST",
+            (hostname,),
+        )
         rows_to_delete = cur.fetchall()
         if len(rows_to_delete) == 2:  # if both rows have last_scanned as None
             print(f"{RED}Deleting duplicate rows with last_scanned as None{RESET}")

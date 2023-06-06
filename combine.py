@@ -18,5 +18,5 @@ def combine_files():
                 with open('rockyou.txt', 'wb') as f_out:
                     f_out.write(f_in1.read())
                     f_out.write(f_in2.read())
-    except IOError as e:
-        print(f"Error occurred while combining files: {str(e)}")
+    except IOError as caught_error:
+        print(f"Error occurred while combining files: {str(caught_error)}")

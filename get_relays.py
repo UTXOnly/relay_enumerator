@@ -1,8 +1,12 @@
+"""
+Module to fetch data from an API.
+"""
+
 import requests
 
 URL = "https://api.nostr.watch/v1/public"
 
-response = requests.get(URL)
+response = requests.get(URL, timeout=5)
 
 if response.status_code == 200:
     data = response.json()
@@ -13,3 +17,4 @@ if response.status_code == 200:
     print(len(items_list))
 else:
     print("Error: Unable to fetch data from API")
+

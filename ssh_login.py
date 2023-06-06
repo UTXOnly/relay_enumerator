@@ -12,28 +12,21 @@ import random
 
 from ddtrace import tracer
 from dotenv import load_dotenv
+import connection_param
 
-GREEN = os.getenv('GREEN')
-RED = os.getenv('RED')
-RESET = os.getenv('RESET')
-YELLOW = os.getenv('YELLOW')
-
-load_dotenv()
-
-tracer.configure(hostname='172.28.0.5', port=8126)
-
+conn = connection_param.conn
+GREEN = connection_param.GREEN
+RED = connection_param.RED
+RESET = connection_param.RESET
+YELLOW = connection_param.YELLOW
 USERNAME_FILE = "usernames.txt"
 PASSWORD_FILE = "common_root_passwords.txt"
 MAX_RETRIES = 3
 MAX_CONNECTIONS = 45
 
-conn = psycopg2.connect(
-    host=os.getenv('DB_HOST'),
-    port=os.getenv('DB_PORT'),
-    dbname=os.getenv('DB_NAME'),
-    user=os.getenv('DB_USER'),
-    password=os.getenv('DB_PASSWORD')
-)
+load_dotenv()
+
+tracer.configure(hostname='172.28.0.5', port=8126)
 
 class SSHConnectionThread(threading.Thread):
     """Thread class for establishing SSH connections."""
@@ -120,9 +113,6 @@ def process_host(ip_address, usernames, passwords):
                 print(f"{YELLOW}Maximum retries reached. Moving to the next host.")
     except Exception as caught_error:
         print(f"{RED}Error occurred while processing {ip_address}: {str(caught_error)}")
-
-
-
 
 
 def run(self):

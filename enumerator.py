@@ -1,32 +1,29 @@
-import os
+"""
+This module handles the enumeration and scanning of hosts.
+"""
 import time
 import concurrent.futures
-from dotenv import load_dotenv
 import asyncio
 import socket
 import psycopg2
 import nmap
-
-GREEN = os.getenv('GREEN')
-RED = os.getenv('RED')
-RESET = os.getenv('RESET')
-YELLOW = os.getenv('YELLOW')
-
-conn = psycopg2.connect(
-    host=os.getenv('DB_HOST'),
-    port=os.getenv('DB_PORT'),
-    dbname=os.getenv('DB_NAME'),
-    user=os.getenv('DB_USER'),
-    password=os.getenv('DB_PASSWORD')
-)
+from dotenv import load_dotenv
+import connection_param
 
 load_dotenv()
 
+conn = connection_param.conn
+GREEN = connection_param.GREEN
+RED = connection_param.RED
+RESET = connection_param.RESET
+YELLOW = connection_param.YELLOW
+
 def initialize_database(conn):
-    # Load environment variables from .env file
+    """
+    Initialize the database by creating the necessary table if it doesn't exist.
+    """
     try:
         cur = conn.cursor()
-        # Create the 'hosts' table with ssh_login column
         cur.execute("""
             CREATE TABLE IF NOT EXISTS hosts (
                 id SERIAL PRIMARY KEY,
@@ -44,12 +41,18 @@ def initialize_database(conn):
         print(f"Error occurred during database initialization: {caught_error}")
 
 def read_hostnames_file():
+    """
+    Read the hostnames from the file 'real_hosts.txt' and return them as a list.
+    """
     with open('real_hosts.txt', 'r', encoding='utf-8') as open_file:
         hostnames = open_file.readlines()
     hostnames = [hostname.strip() for hostname in hostnames]
     return hostnames
 
 def resolve_hosts(hosts, conn):
+    """
+    Resolve the IP addresses of the given hostnames and store them in the database.
+    """
     results = {}
     for host in hosts:
         cur = conn.cursor()
@@ -61,14 +64,20 @@ def resolve_hosts(hosts, conn):
             else:
                 ip_address = socket.gethostbyname(host)
                 results[host] = ip_address
-                cur.execute("INSERT INTO hosts (hostname, ip_address) VALUES (%s, %s)", (host, ip))
+                cur.execute("INSERT INTO hosts (hostname, ip_address) VALUES (%s, %s)", (host, ip_address))
                 conn.commit()
-        except Exception as caught_error:
+        except socket.gaierror as caught_error:
             print(f"Error resolving {host}: {str(caught_error)}")
+            conn.rollback()
+        except psycopg2.Error as caught_error:
+            print(f"Error updating database for host {host}: {str(caught_error)}")
             conn.rollback()
     return results
 
 def scan_host(host, hostname, scanner, conn):
+    """
+    Scan the specified host for open ports and update the database with the results.
+    """
     print(f"Scanning host {hostname} ({host})...")
     try:
         cur = conn.cursor()
@@ -77,10 +86,7 @@ def scan_host(host, hostname, scanner, conn):
         if last_scanned is None or time.time() - last_scanned >= 24 * 60 * 60:
             scanner.scan(host)
             results = scanner[host]['tcp']
-            open_ports = []
-            for port, data in results.items():
-                if data['state'] == 'open':
-                    open_ports.append(port)
+            open_ports = [port for port, data in results.items() if data['state'] == 'open']
             if 5432 in open_ports:
                 print(f"{GREEN}Port 5432 is open on host {RESET}{hostname} ({host})!")
                 cur.execute("UPDATE hosts SET postgres_open = true WHERE hostname = %s", (hostname,))
@@ -94,30 +100,36 @@ def scan_host(host, hostname, scanner, conn):
             print(f"{GREEN}Last scanned timestamp updated in the database for host {RESET}{hostname} ({host}){RESET}")
         else:
             print(f"{YELLOW}Skipping host{RESET} {hostname} ({host}){YELLOW} from port scan as it was recently scanned.{RESET}")
-    except Exception as caught_error:
+    except psycopg2.Error as caught_error:
         print(f"{RED}Error updating database for host {hostname} ({host}): {str(caught_error)}{RESET}")
         conn.rollback()
     return hostname
 
+
 def scan_hosts_concurrently(hosts, scanner, conn):
+    """
+    Scan the hosts concurrently and return the results.
+    """
     loop = asyncio.get_event_loop()
     with concurrent.futures.ThreadPoolExecutor() as executor:
-        # Create a list of future tasks for scanning each host concurrently
         scan_tasks = [
             loop.run_in_executor(executor, scan_host, host, hostname, scanner, conn)
             for hostname, host in hosts.items()
         ]
-        # Await the completion of all tasks
         results = loop.run_until_complete(asyncio.gather(*scan_tasks))
     return results
 
+
 def list_checker(conn):
+    """
+    Check the open_ports column in the database and update its format if necessary.
+    """
     cur = conn.cursor()
     cur.execute("SELECT hostname, open_ports FROM hosts")
     rows = cur.fetchall()
     for row in rows:
         host, open_ports = row
-        if open_ports is None:   # Skip the row if open_ports is None
+        if open_ports is None:
             continue
         elif not isinstance(open_ports, list):
             port_list = []
@@ -129,26 +141,41 @@ def list_checker(conn):
             conn.commit()
 
 def main():
+    """
+    The main function that orchestrates the enumeration and scanning process.
+    """
     try:
         scanner = nmap.PortScanner()
 
         initialize_database(conn)
-
         hostnames = read_hostnames_file()
-
         host_dict = resolve_hosts(hostnames, conn)
         print(host_dict)
 
         # Scan hosts and collect open ports
         scan_hosts_concurrently(host_dict, scanner, conn)
 
+        # Check and update the format of open_ports column in the database
+        list_checker(conn)
+
         # Connect to PostgreSQL using collected open hosts and credentials
-        #connect_to_postgres(postgres_open, credentials)
+        # connect_to_postgres(postgres_open, credentials)
 
         # Perform SSH login on the resolved hosts
         # ssh_login('usernames.txt', 'common_root_passwords.txt')
+
+    except socket.gaierror as caught_error:
+        print(f"{RED}Error resolving host: {str(caught_error)}{RESET}")
+        conn.rollback()
+
+    except psycopg2.Error as caught_error:
+        print(f"{RED}Error updating database: {str(caught_error)}{RESET}")
+        conn.rollback()
 
     except Exception as caught_error:
         print(f"{RED}Error running main function: {str(caught_error)}{RESET}")
 
 main()
+
+       
+
