@@ -4,3 +4,4 @@ python-nmap
 asyncio
 requests
 python-dotenv
+ddtrace
