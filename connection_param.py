@@ -17,6 +17,8 @@ class Connection:
             user=self.user,
             password=self.password
         )
+    
+connection_params = Connection()
 
 class Color:
     def __init__(self):
@@ -24,6 +26,8 @@ class Color:
         self.RED = os.getenv('RED')
         self.RESET = os.getenv('RESET')
         self.YELLOW = os.getenv('YELLOW')
+
+color_params = Color()
 
 
 

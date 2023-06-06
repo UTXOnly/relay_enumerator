@@ -1,3 +1,9 @@
+# pylint: disable=C0301,C0114,C0115
+# This line is longer than the maximum allowed length
+# Missing module docstring
+# Missing class docstring
+
+# Your code here
 
 import socket
 import threading

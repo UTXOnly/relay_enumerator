@@ -1,6 +1,9 @@
-"""
-This module handles the removal of duplicate hosts from the database.
-"""
+# pylint: disable=C0301,C0114,C0115
+# This line is longer than the maximum allowed length
+# Missing module docstring
+# Missing class docstring
+
+# Your code here
 
 from dotenv import load_dotenv
 from connection_param import Color, Connection
