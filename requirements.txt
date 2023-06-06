@@ -2,5 +2,3 @@ psycopg2-binary
 paramiko
 python-nmap
 asyncio
-gzip
-socket
