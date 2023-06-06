@@ -1,10 +1,8 @@
-# pylint: disable=C0301,C0114,C0115
+# pylint: disable=C0301,C0114,C0115,W0718
 # This line is longer than the maximum allowed length
 # Missing module docstring
 # Missing class docstring
-
-# Your code here
-
+# Catching too general exception Exception (broad-exception-caught)
 import time
 import concurrent.futures
 import asyncio
@@ -120,27 +118,6 @@ def scan_hosts_concurrently(hosts, scanner, conn):
         results = loop.run_until_complete(asyncio.gather(*scan_tasks))
     return results
 
-
-def list_checker(conn):
-    """
-    Check the open_ports column in the database and update its format if necessary.
-    """
-    cur = conn.cursor()
-    cur.execute("SELECT hostname, open_ports FROM hosts")
-    rows = cur.fetchall()
-    for row in rows:
-        host, open_ports = row
-        if open_ports is None:
-            continue
-        elif not isinstance(open_ports, list):
-            port_list = []
-            for port in open_ports.split(','):
-                port = port.strip()
-                if port.isdigit():
-                    port_list.append(int(port))
-            cur.execute("UPDATE hosts SET open_ports = %s WHERE hostname = %s", (port_list, host))
-            conn.commit()
-
 def main():
     """
     The main function that orchestrates the enumeration and scanning process.
@@ -156,15 +133,6 @@ def main():
         # Scan hosts and collect open ports
         scan_hosts_concurrently(host_dict, scanner, conn)
 
-        # Check and update the format of open_ports column in the database
-        list_checker(conn)
-
-        # Connect to PostgreSQL using collected open hosts and credentials
-        # connect_to_postgres(postgres_open, credentials)
-
-        # Perform SSH login on the resolved hosts
-        # ssh_login('usernames.txt', 'common_root_passwords.txt')
-
     except socket.gaierror as caught_error:
         print(f"{colors.RED}Error resolving host: {str(caught_error)}{colors.RESET}")
         conn.rollback()
@@ -177,6 +145,3 @@ def main():
         print(f"{colors.RED}Error running main function: {str(caught_error)}{colors.RESET}")
 
 main()
-
-       
-

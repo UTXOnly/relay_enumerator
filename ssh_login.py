@@ -1,9 +1,8 @@
-# pylint: disable=C0301,C0114,C0115
+# pylint: disable=C0301,C0114,C0115,W0718
 # This line is longer than the maximum allowed length
 # Missing module docstring
 # Missing class docstring
-
-# Your code here
+# Catching too general exception Exception (broad-exception-caught)
 
 import socket
 import threading
@@ -12,8 +11,8 @@ import traceback
 
 from queue import Queue
 
-import paramiko
 import random
+import paramiko
 
 from ddtrace import tracer
 from dotenv import load_dotenv
