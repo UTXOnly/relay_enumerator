@@ -1,3 +1,4 @@
+# pylint: disable=C0301,C0114,C0115,W0718,C0103, R0903
 import os
 import psycopg2
 
