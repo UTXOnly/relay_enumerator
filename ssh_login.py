@@ -1,4 +1,4 @@
-# pylint: disable=C0301,C0114,C0115,W0718, C0116
+# pylint: disable=C0301,C0114,C0115,W0718, C0116, C0305
 # This line is longer than the maximum allowed length
 # Missing module docstring
 # Missing class docstring
@@ -96,12 +96,8 @@ def process_host(ip_address, usernames, passwords):
                 except socket.timeout:
                     print(f"{colors.RED}Connection timed out for {colors.RESET}{ip_address}")
                     break
-                except paramiko.ssh_exception.NoValidConnectionsError as caught_error:
-                    print(f"{colors.RED}Unable to connect to port 22 on {colors.RESET}{ip_address}")
-                    print(f"{colors.RED}Error: {colors.RESET}{str(caught_error)}")
-                    break
                 except (ConnectionResetError, paramiko.ssh_exception.SSHException) as caught_error:
-                    print(f"{colors.RED}Connection reset. Retrying...")
+                    print(f"{colors.RED}Connection reset. Retrying...{caught_error}")
                     retries += 1
                     time.sleep(1)  # Wait for 1 second before retrying
                     continue
