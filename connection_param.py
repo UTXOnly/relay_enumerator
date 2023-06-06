@@ -29,7 +29,3 @@ class Color:
         self.YELLOW = os.getenv('YELLOW')
 
 color_params = Color()
-
-
-
-

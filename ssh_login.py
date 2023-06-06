@@ -96,11 +96,6 @@ def process_host(ip_address, usernames, passwords):
                 except socket.timeout:
                     print(f"{colors.RED}Connection timed out for {colors.RESET}{ip_address}")
                     break
-                except (ConnectionResetError, paramiko.ssh_exception.SSHException) as caught_error:
-                    print(f"{colors.RED}Connection reset. Retrying...{caught_error}")
-                    retries += 1
-                    time.sleep(1)  # Wait for 1 second before retrying
-                    continue
                 except Exception as caught_error:
                     print(f"{colors.RED}Error occurred: {colors.RESET}{str(caught_error)}")
                     traceback.print_exc()

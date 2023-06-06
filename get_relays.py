@@ -1,6 +1,8 @@
-"""
-Module to fetch data from an API.
-"""
+# pylint: disable=C0301,C0114,C0115,W0718, C0304, C0305
+# This line is longer than the maximum allowed length
+# Missing module docstring
+# Missing class docstring
+# Catching too general exception Exception (broad-exception-caught)
 
 import requests
 

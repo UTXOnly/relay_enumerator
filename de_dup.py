@@ -44,5 +44,3 @@ def remove_duplicate_hosts():
             conn.connect().commit()
 
 remove_duplicate_hosts()
-
-
