@@ -5,7 +5,7 @@ import psycopg2
 import traceback
 import time
 import os
-from ddtrace import tracer
+from ddtrace import tracer, patch_all
 import concurrent.futures
 from dotenv import load_dotenv
 import get_relays
@@ -17,6 +17,7 @@ RESET = '\033[0m'
 YELLOW = '\033[33m'
 
 tracer.configure(hostname='172.18.0.5', port=8126)
+patch_all()
 
 load_dotenv()
 def initialize_database(conn):
