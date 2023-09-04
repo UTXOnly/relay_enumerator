@@ -24,9 +24,9 @@ connection_params = Connection()
 
 class Color:
     def __init__(self):
-        self.GREEN = os.getenv('GREEN')
+        self.GREEN = str(os.getenv('GREEN'))
         self.RED = os.getenv('RED')
         self.RESET = os.getenv('RESET')
-        self.YELLOW = os.getenv('YELLOW')
+        self.YELLOW = str(os.getenv('YELLOW'))
 
 color_params = Color()

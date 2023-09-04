@@ -2,7 +2,7 @@ version: '3'
 
 services:
   postgres_enum:
-    image: postgres:latest
+    image: postgres:14
     restart: always
     environment:
       - POSTGRES_HOST=${DB_HOST}
@@ -16,7 +16,8 @@ services:
       mynetwork:
         ipv4_address: 172.18.0.2
     volumes:
-      - postgres-data:/var/lib/postgresql/data
+      - ./postgresql.conf:/postgresql.conf
+      - ./postgresql/data:/var/lib/postgresql/data
     labels:
       com.datadoghq.ad.check_names: '["postgres"]'
       com.datadoghq.ad.init_configs: '[{}]'
@@ -26,11 +27,57 @@ services:
             "dbm": true,
             "username": "datadog",
             "password" : "datadog",
-            "host": "3.216.134.138",
+            "host": "172.18.0.2",
             "port" : "5466",
             "disable_generic_tags": true
           }
         ]
+
+  datadog-agent:
+    container_name: datadog-agent
+    image: datadog/agent:latest
+    environment:
+      - DD_API_KEY=${DD_API_KEY}
+      - DD_SITE=datadoghq.com
+      - DD_HOSTNAME=relay_enumerator
+      - DD_ENV=${DD_ENV}
+      - DD_TAGS=owner:brian
+      - DD_DOGSTATSD_NON_LOCAL_TRAFFIC=true
+      - DD_DOCKER_LABELS_AS_TAGS=true
+      - DD_DOCKER_ENV_AS_TAGS=true
+      - DD_SYSTEM_PROBE_ENABLED=true
+      - DD_PROCESS_AGENT_ENABLED=true
+      - DD_APM_NON_LOCAL_TRAFFIC=true
+      - DD_AGENT_HOST=host.docker.internal
+      - DD_LOGS_ENABLED=true
+      - DD_LOGS_CONFIG_CONTAINER_COLLECT_ALL=true
+      - DD_CONTAINER_EXCLUDE="image:datadog/agent:latest"
+      - DD_LOG_LEVEL=info
+      - DD_REMOTE_CONFIGURATION_ENABLED=true
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - /var/lib/docker/containers:/var/lib/docker/containers:ro
+      - ./logs:/logs
+      - /proc/:/host/proc/:ro
+      - /sys/fs/cgroup:/host/sys/fs/cgroup:ro
+      - /sys/kernel/debug:/sys/kernel/debug
+    cap_add:
+      - SYS_ADMIN
+      - SYS_RESOURCE
+      - SYS_PTRACE
+      - NET_ADMIN
+      - NET_BROADCAST
+      - NET_RAW
+      - IPC_LOCK
+      - CHOWN
+    security_opt:
+      - apparmor:unconfined
+    ports:
+      - "8126:8126"
+      - "8125:8125"
+    networks:
+      my_network:
+        ipv4_address: 172.18.0.5
 
 networks:
   mynetwork:

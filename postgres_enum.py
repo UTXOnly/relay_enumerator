@@ -1,9 +1,3 @@
-# pylint: disable=C0301,C0114,C0115,W0718, W0612, C0116, C0305
-# This line is longer than the maximum allowed length
-# Missing module docstring
-# Missing class docstring
-# Catching too general exception Exception (broad-exception-caught)
-
 import psycopg2
 from connection_param import Color
 

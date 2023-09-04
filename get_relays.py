@@ -1,22 +1,26 @@
-# pylint: disable=C0301,C0114,C0115,W0718, C0304, C0305
-# This line is longer than the maximum allowed length
-# Missing module docstring
-# Missing class docstring
-# Catching too general exception Exception (broad-exception-caught)
-
 import requests
 
-URL = "https://api.nostr.watch/v1/public"
+def fetch_data_from_api():
+    URL = "https://api.nostr.watch/v1/online"
+    try:
+        response = requests.get(URL, timeout=5)
+        response.raise_for_status()  # Raise an exception if the status code is not 200
+        data = response.json()
+        items_list = []
+        for item in data:
+            hostname = item.replace("wss://", "")  # Remove "wss://" from the item
+            items_list.append(hostname)
+            print(f"Added item {hostname} to the list")
+            with open("hostnames.txt", "a") as file:
+                file.write(hostname + "\n")
+        print(len(items_list))
+        return items_list
+    except requests.exceptions.RequestException as e:
+        print("Error: Unable to fetch data from API")
+        return []
 
-response = requests.get(URL, timeout=5)
+if __name__ == "__main__":
+    items = fetch_data_from_api()
+    print(items)
 
-if response.status_code == 200:
-    data = response.json()
-    items_list = []
-    for item in data:
-        items_list.append(item)
-        print(f"Added item {item} to the list")
-    print(len(items_list))
-else:
-    print("Error: Unable to fetch data from API")
 
