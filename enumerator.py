@@ -189,9 +189,10 @@ def create_credentials_dictionary():
     return credentials_dict
 
 
-def main():
-    try:
+import asyncio
 
+async def main():
+    try:
         get_relays.fetch_data_from_api()
         scanner = nmap.PortScanner()
         load_dotenv()
@@ -213,12 +214,12 @@ def main():
         print(host_dict)
 
         # Scan hosts and collect open ports
-        postgres_open = scan_hosts_concurrently(host_dict, scanner, conn)
+        postgres_open = await scan_hosts_concurrently(host_dict, scanner, conn)
 
         credentials = create_credentials_dictionary()
 
         # Connect to PostgreSQL using collected open hosts and credentials
-        connect_to_postgres(postgres_open, credentials)
+        await connect_to_postgres(postgres_open, credentials)
 
         # Perform SSH login on the resolved hosts
         #ssh_login.main('usernames.txt', 'common_root_passwords.txt')
@@ -226,6 +227,8 @@ def main():
     except Exception as e:
         print(f"{RED}Error running main function: {str(e)}{RESET}")
 
-main()
+if __name__ == "__main__":
+    asyncio.run(main())
+
 
 
