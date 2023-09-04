@@ -72,7 +72,7 @@ def resolve_hosts(hosts, conn):
     return results
 
 
-def scan_host(host, hostname, scanner, conn):
+async def scan_host(host, hostname, scanner, conn):
     print(f"Scanning host {hostname} ({host})...")
     try:
         cur = conn.cursor()
@@ -111,24 +111,24 @@ def scan_host(host, hostname, scanner, conn):
 
     return hostname
 
-def scan_hosts_concurrently(hosts, scanner, conn):
+async def scan_hosts_concurrently(hosts, scanner, conn):
     loop = asyncio.get_event_loop()
     with concurrent.futures.ThreadPoolExecutor() as executor:
         # Create a list of future tasks for scanning each host concurrently
         scan_tasks = [
-            loop.run_in_executor(executor, scan_host, host, hostname, scanner, conn)
+            loop.run_in_executor(executor, await scan_host, host, hostname, scanner, conn)
             for hostname, host in hosts.items()
         ]
         # Await the completion of all tasks
         results = loop.run_until_complete(asyncio.gather(*scan_tasks))
     return results
 
-def connect_to_postgres(hosts, credentials):
+async def connect_to_postgres(hosts, credentials):
     loop = asyncio.get_event_loop()
     with concurrent.futures.ThreadPoolExecutor() as executor:
         # Create a list of future tasks for connecting to each host concurrently
         connect_tasks = [
-            loop.run_in_executor(executor, connect_host, host, username, password)
+            loop.run_in_executor(executor, await connect_host, host, username, password)
             for host in hosts
             for username, password in credentials.items()
         ]
@@ -137,7 +137,7 @@ def connect_to_postgres(hosts, credentials):
     
     return results
 
-def connect_host(host, username, password):
+async def connect_host(host, username, password):
     try:
         conn = psycopg2.connect(
             host=host,
