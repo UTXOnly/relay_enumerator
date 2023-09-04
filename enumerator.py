@@ -116,7 +116,7 @@ async def scan_hosts_concurrently(hosts, scanner, conn):
     with concurrent.futures.ThreadPoolExecutor() as executor:
         # Create a list of future tasks for scanning each host concurrently
         scan_tasks = [
-            loop.run_in_executor(executor, await scan_host, host, hostname, scanner, conn)
+            loop.run_in_executor(executor, scan_host, host, hostname, scanner, conn)
             for hostname, host in hosts.items()
         ]
         # Await the completion of all tasks
@@ -128,7 +128,7 @@ async def connect_to_postgres(hosts, credentials):
     with concurrent.futures.ThreadPoolExecutor() as executor:
         # Create a list of future tasks for connecting to each host concurrently
         connect_tasks = [
-            loop.run_in_executor(executor, await connect_host, host, username, password)
+            loop.run_in_executor(executor, connect_host, host, username, password)
             for host in hosts
             for username, password in credentials.items()
         ]
