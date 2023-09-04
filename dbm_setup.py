@@ -7,7 +7,7 @@ RESET = "\033[0m"
 
 connection_params = {
     'host': "localhost",
-    'port': '5432',
+    'port': '5466',
     'dbname': 'enum_db',
     'user': 'enum',
     'password': 'enum'
