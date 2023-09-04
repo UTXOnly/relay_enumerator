@@ -76,7 +76,7 @@ services:
       - "8126:8126"
       - "8125:8125"
     networks:
-      my_network:
+      mynetwork:
         ipv4_address: 172.18.0.5
 
 networks:
