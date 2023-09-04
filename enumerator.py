@@ -72,7 +72,7 @@ def resolve_hosts(hosts, conn):
     return results
 
 
-async def scan_host(host, hostname, scanner, conn):
+def scan_host(host, hostname, scanner, conn):
     print(f"Scanning host {hostname} ({host})...")
     try:
         cur = conn.cursor()
@@ -111,7 +111,7 @@ async def scan_host(host, hostname, scanner, conn):
 
     return hostname
 
-async def scan_hosts_concurrently(hosts, scanner, conn):
+def scan_hosts_concurrently(hosts, scanner, conn):
     loop = asyncio.get_event_loop()
     with concurrent.futures.ThreadPoolExecutor() as executor:
         # Create a list of future tasks for scanning each host concurrently
@@ -123,7 +123,7 @@ async def scan_hosts_concurrently(hosts, scanner, conn):
         results = loop.run_until_complete(asyncio.gather(*scan_tasks))
     return results
 
-async def connect_to_postgres(hosts, credentials):
+def connect_to_postgres(hosts, credentials):
     loop = asyncio.get_event_loop()
     with concurrent.futures.ThreadPoolExecutor() as executor:
         # Create a list of future tasks for connecting to each host concurrently
@@ -137,7 +137,7 @@ async def connect_to_postgres(hosts, credentials):
     
     return results
 
-async def connect_host(host, username, password):
+def connect_host(host, username, password):
     try:
         conn = psycopg2.connect(
             host=host,
@@ -189,10 +189,9 @@ def create_credentials_dictionary():
     return credentials_dict
 
 
-import asyncio
-
-async def main():
+def main():
     try:
+
         get_relays.fetch_data_from_api()
         scanner = nmap.PortScanner()
         load_dotenv()
@@ -214,12 +213,12 @@ async def main():
         print(host_dict)
 
         # Scan hosts and collect open ports
-        postgres_open = await scan_hosts_concurrently(host_dict, scanner, conn)
+        postgres_open = scan_hosts_concurrently(host_dict, scanner, conn)
 
         credentials = create_credentials_dictionary()
 
         # Connect to PostgreSQL using collected open hosts and credentials
-        await connect_to_postgres(postgres_open, credentials)
+        connect_to_postgres(postgres_open, credentials)
 
         # Perform SSH login on the resolved hosts
         #ssh_login.main('usernames.txt', 'common_root_passwords.txt')
@@ -227,8 +226,5 @@ async def main():
     except Exception as e:
         print(f"{RED}Error running main function: {str(e)}{RESET}")
 
-if __name__ == "__main__":
-    asyncio.run(main())
-
-
+main()
 
