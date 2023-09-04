@@ -28,8 +28,8 @@ services:
             "dbm": true,
             "username": "datadog",
             "password" : "datadog",
-            "host": "127.0.0.1",
-            "port" : "5466",
+            "host": "172.18.0.2",
+            "port" : "5432",
             "disable_generic_tags": true
           }
         ]
