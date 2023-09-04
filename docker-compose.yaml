@@ -15,6 +15,7 @@ services:
     networks:
       mynetwork:
         ipv4_address: 172.18.0.2
+    command: postgres -c 'config_file=/postgresql.conf'
     volumes:
       - ./postgresql.conf:/postgresql.conf
       - ./postgresql/data:/var/lib/postgresql/data
@@ -27,7 +28,7 @@ services:
             "dbm": true,
             "username": "datadog",
             "password" : "datadog",
-            "host": "172.18.0.2",
+            "host": "127.0.0.1",
             "port" : "5466",
             "disable_generic_tags": true
           }
