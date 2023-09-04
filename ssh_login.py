@@ -122,6 +122,6 @@ def main(username_file, password_file):
     for thread in threads:
         thread.join()
 
-username_file = "usernames.txt"
-password_file = "common_root_passwords.txt"
+username_file = "./credential_files/usernames.txt"
+password_file = "./credential_files/common_root_passwords.txt"
 main(username_file, password_file)
