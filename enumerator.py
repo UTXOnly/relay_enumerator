@@ -9,7 +9,7 @@ from ddtrace import tracer, patch_all
 import concurrent.futures
 from dotenv import load_dotenv
 import get_relays
-import ssh_login
+#import ssh_login
 
 GREEN = '\033[32m'
 RED = '\033[31m'
@@ -221,7 +221,7 @@ def main():
         connect_to_postgres(postgres_open, credentials)
 
         # Perform SSH login on the resolved hosts
-        ssh_login.main('usernames.txt', 'common_root_passwords.txt')
+        #ssh_login.main('usernames.txt', 'common_root_passwords.txt')
 
     except Exception as e:
         print(f"{RED}Error running main function: {str(e)}{RESET}")
