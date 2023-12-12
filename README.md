@@ -44,6 +44,7 @@ mockhost.local       | 172.16.0.1     | 5432       | Yes             | 163320652
     * Message relay admin if vulnerabilites are found
 
 ## Contributing
+* Test
 
 Contributions are welcome! If you encounter any issues or have suggestions for improvements, please open an issue or submit a pull request.
 
